@@ -19,6 +19,7 @@ void setup(void);
 void delay(uint16_t dly);
 void dispMsmet(uint8_t *lcd_string);
 void dispSsmet(uint8_t *lcd_string);
+void dispOptrow(uint8_t *lcd_string);
 
 int lcd_test(void)
 {
@@ -310,6 +311,25 @@ void dispSsmet(uint8_t *lcd_string)
 	wrdb(0xB2, LCDCMD, STA01);				//auto write OFF
 }
 
+void dispOptrow(uint8_t *lcd_string)
+{
+	uint16_t	i;
+	uint8_t*	dp;
+
+	wrdb(0x98, LCDCMD, STA01);				//graphics ON, text ON
+	wrdb((U8)(OPTROW_OFFS&0xff), LCDDATA, STA01);
+	wrdb((U8)(OPTROW_OFFS>>8), LCDDATA, STA01);
+	wrdb(0x24, LCDCMD, STA01);				//set address pointer = 0x0040 (first pixel)
+	wrdb(0xB0, LCDCMD, STA01);				//auto write ON
+
+	dp = lcd_string;
+	for(i=0;i<SUBSM_LEN;i++)    //fill screen with pixels
+	{
+		wrdb(*dp++, LCDDATA, STA23);
+	}
+	wrdb(0xB2, LCDCMD, STA01);				//auto write OFF
+}
+
 /****************************************************
 * Initialization For controller + Setup, to run once*
 *****************************************************/
@@ -381,14 +401,28 @@ void loop(void)
 	wr_sdigit('S', SDADDR7, sub7);
 	wr_sseg(SEGDP, 0, SDADDR3);
 
+	// sub cluster
+	sub7[MINSSYM_ADDR] = gdash;
+	wr_msym2(*gmem, MEMSYM_X, MEMSYM_Y, 0, MEMSSYM_ADDR, sub7);
+	wr_msym2(*gskp, SKPSYM_X, SKPSYM_Y, 0, SKPSSYM_ADDR, sub7);
+	wr_sdigit('8', MEMSCH_ADDR, sub7);
+	wr_msym2(*gtone, TONESYM_X, TONESYM_Y, 0, TONSSYM_ADDR, sub7);
+	wr_msym2(*gdup, DUPSYM_X, DUPSYM_Y, 0, DUPSSYM_ADDR, sub7);
+
+	wr_msym2(*gprog, PROGSYM_X, PROGSYM_Y, 0, PROG_ADDR, sub7);
+	wr_msym2(*gband, BANDSYM_X, BANDSYM_Y, 0, BAND_ADDR, sub7);
+	wr_msym2(*gsub, SUBSYM_X, SUBSYM_Y, 0, SUB_ADDR, sub7);
+	wr_msym2(*glock, LOCKSYM_X, LOCKSYM_Y, 0, LOCK_ADDR, sub7);
+
 	wr_msym2(*gtone, TONESYM_X, TONESYM_Y, 0, TONMSYM_ADDR, main7);
 	wr_msym2(*gdup, DUPSYM_X, DUPSYM_Y, 0, DUPMSYM_ADDR, main7);
-	main7[MINMSYM_ADDR] = gdash;
 
+	main7[MINMSYM_ADDR] = gdash;
 	wr_msym2(*gmem, MEMSYM_X, MEMSYM_Y, 0, MEMMSYM_ADDR, main7);
 	wr_msym2(*gskp, SKPSYM_X, SKPSYM_Y, 0, SKPMSYM_ADDR, main7);
 	wr_sdigit('8', MEMMCH_ADDR, main7);
 
+	// main smet
 	wr_msym2(*gsmet1, SM1SYM_X, SM1SYM_Y, 0, MSMET1_ADDR, mainsm);
 	wr_msym2(*gsmet2, SM2SYM_X, SM2SYM_Y, 0, MSMET2_ADDR, mainsm);
 	wr_msym2(*gsmet3, SM3SYM_X, SM3SYM_Y, 0, MSMET3_ADDR, mainsm);
@@ -397,6 +431,9 @@ void loop(void)
 	wr_msym2(*gsmet6, SM6SYM_X, SM6SYM_Y, 0, MSMET6_ADDR, mainsm);
 	wr_msym2(*gsmet7, SM7SYM_X, SM7SYM_Y, 0, MSMET7_ADDR, mainsm);
 
+	// sub smet
+	wr_msym2(*gts, TSSYM_X, TSSYM_Y, 0, TS_ADDR, subsm);
+	wr_msym2(*gmhz, MHZSYM_X, MHZSYM_Y, 0, MHZ_ADDR, subsm);
 	wr_msym2(*gsmet1, SM1SYM_X, SM1SYM_Y, 0, SSMET1_ADDR, subsm);
 	wr_msym2(*gsmet2, SM2SYM_X, SM2SYM_Y, 0, SSMET2_ADDR, subsm);
 	wr_msym2(*gsmet3, SM3SYM_X, SM3SYM_Y, 0, SSMET3_ADDR, subsm);
@@ -404,6 +441,30 @@ void loop(void)
 	wr_msym2(*gsmet5, SM5SYM_X, SM5SYM_Y, 0, SSMET5_ADDR, subsm);
 	wr_msym2(*gsmet6, SM6SYM_X, SM6SYM_Y, 0, SSMET6_ADDR, subsm);
 	wr_msym2(*gsmet7, SM7SYM_X, SM7SYM_Y, 0, SSMET7_ADDR, subsm);
+
+	// ow/low
+	wr_msym2(*gow, OWSYM_X, OWSYM_Y, 0, OW_ADDR, mainsm);
+	wr_msym2(*glow, LOWSYM_X, LOWSYM_Y, 0, LOW_ADDR, mainsm);
+
+	// optrow
+	wr_msym2(*gvxo, VXOSYM_X, VXOSYM_Y, 0, VXO_ADDR, optrow);
+	wr_msym2(*grit, RITSYM_X, RITSYM_Y, 0, RIT_ADDR, optrow);
+
+	wr_msym2(*goptup, OPTUPSYM_X, OPTUPSYM_Y, 0, OPTA_ADDR+UP_ADDR, optrow);
+	wr_msym2(*goptdn, OPTDNSYM_X, OPTDNSYM_Y, 0, OPTA_ADDR+DN_ADDR, optrow);
+	wr_msym2(*gopttq, OPTASYM_X, OPTASYM_Y, 0, OPTA_ADDR+OPT_ADDR, optrow);
+
+	wr_msym2(*goptup, OPTUPSYM_X, OPTUPSYM_Y, 0, OPTB_ADDR+UP_ADDR, optrow);
+	wr_msym2(*goptdn, OPTDNSYM_X, OPTDNSYM_Y, 0, OPTB_ADDR+DN_ADDR, optrow);
+	wr_msym2(*goptdq, OPTBSYM_X, OPTBSYM_Y, 0, OPTB_ADDR+OPT_ADDR, optrow);
+
+	wr_msym2(*goptup, OPTUPSYM_X, OPTUPSYM_Y, 0, OPTC_ADDR+UP_ADDR, optrow);
+	wr_msym2(*goptdn, OPTDNSYM_X, OPTDNSYM_Y, 0, OPTC_ADDR+DN_ADDR, optrow);
+	wr_msym2(*gopt1, OPTCSYM_X, OPTCSYM_Y, 0, OPTC_ADDR+OPT_ADDR, optrow);
+
+	wr_msym2(*goptup, OPTUPSYM_X, OPTUPSYM_Y, 0, OPTD_ADDR+UP_ADDR, optrow);
+	wr_msym2(*goptdn, OPTDNSYM_X, OPTDNSYM_Y, 0, OPTD_ADDR+DN_ADDR, optrow);
+	wr_msym2(*gopt2, OPTDSYM_X, OPTDSYM_Y, 0, OPTD_ADDR+OPT_ADDR, optrow);
 
 /*	wr_ssym2(*gsmet1, SM1SYM_X, SM1SYM_Y, 0, SSMET1_ADDR);
 	wr_ssym2(*gsmet2, SM2SYM_X, SM2SYM_Y, 0, SSMET2_ADDR);
@@ -417,6 +478,7 @@ void loop(void)
 	dispImageS(sub7);
 	dispMsmet(mainsm);
 	dispSsmet(subsm);
+	dispOptrow(optrow);
 
 /*	wait(200);
 	wr_mseg(SEGB, 1, MDADDR0);

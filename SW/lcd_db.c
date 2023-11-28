@@ -36,8 +36,8 @@
 U8	main7[MAIN7_LEN];		// main 7-seg DU memory
 U8	sub7[SUB7_LEN];			// sub 7-seg DU memory
 U8	mainsm[MAINSM_LEN];		// main smet row
-U8	subsm[SUBSM_LEN];		// main smet row
-U8	optrow[OPTROW_LEN];		// main smet row
+U8	subsm[SUBSM_LEN];		// sub smet row
+U8	optrow[OPTROW_LEN];		// opt row
 
 //-----------------------------------------------------------------------------
 // Local Fn Declarations
