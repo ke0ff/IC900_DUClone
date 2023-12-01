@@ -133,9 +133,3 @@ extern	U8	gsub[][];
 extern	U8	glock[][];
 
 #endif
-
-void wr_msym(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr, U8* mptr);
-void wr_msym2(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr, U8* mptr);
-
-void wr_ssym(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr);
-void wr_ssym2(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr);

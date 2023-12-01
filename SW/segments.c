@@ -343,9 +343,6 @@ U8 digitsS[12][2] = {
 // SEGMENTS - MAIN              // ***************************************************
 //////////////////////////////////
 
-#define	SEGM_AX	0		// origin, x
-#define	SEGM_AY	0		// origin, y
-#define	SEGM_AO	0		// orientation, 2=vert, (19x2 array), 1=vert (19x1 array), 0=horiz (5x3 array)
 U8 segm_a[5][3] = {
 	{0x01,0xFF,0xF8},
 	{0x03,0xFF,0xFC},
@@ -354,9 +351,6 @@ U8 segm_a[5][3] = {
 	{0x00,0x7F,0xE0}
 };
 
-#define	SEGM_BX	2		// origin, x
-#define	SEGM_BY	0		// origin, y
-#define	SEGM_BO	1		// orientation, 2=vert, (19x2 array), 1=vert (19x1 array), 0=horiz (5x3 array)
 U8 segm_b[19] = {
 	 0x00,0x00,0x02,0x07,
 	 0x0F,0x1F,0x1F,0x1F,
@@ -365,9 +359,6 @@ U8 segm_b[19] = {
 	 0x07,0x02,0x00
 };
 
-#define	SEGM_CX	2		// origin, x
-#define	SEGM_CY	19		// origin, y
-#define	SEGM_CO	1		// orientation, 2=vert, (19x2 array), 1=vert (19x1 array), 0=horiz (5x3 array)
 U8 segm_c[19] = {
 	 0x02,0x07,0x0F,0x1F,
 	 0x1F,0x1F,0x1F,0x1F,
@@ -376,9 +367,6 @@ U8 segm_c[19] = {
 	 0x02,0x00,0x00
 };
 
-#define	SEGM_DX	0		// origin, x
-#define	SEGM_DY	33		// origin, y
-#define	SEGM_DO	0		// orientation, 2=vert, (19x2 array), 1=vert (19x1 array), 0=horiz (5x3 array)
 U8 segm_d[5][3] = {
 	{0x00,0x7F,0xE0},
 	{0x00,0xFF,0xF0},
@@ -387,9 +375,6 @@ U8 segm_d[5][3] = {
 	{0x01,0xFF,0xF8}
 };
 
-#define	SEGM_EX	0		// origin, x
-#define	SEGM_EY	19		// origin, y
-#define	SEGM_EO	2		// orientation, 2=vert, (19x2 array), 1=vert (19x1 array), 0=horiz (5x3 array)
 U8 segm_e[19][2] = {
 	{0x04,0x00}, {0x0E,0x00},
 	{0x0F,0x00}, {0x0F,0x80},
@@ -403,9 +388,6 @@ U8 segm_e[19][2] = {
 	{0x00,0x00}
 };
 
-#define	SEGM_FX	0		// origin, x
-#define	SEGM_FY	0		// origin, y
-#define	SEGM_FO	2		// orientation, 2=vert, (19x2 array), 1=vert (19x1 array), 0=horiz (5x3 array)
 U8 segm_f[19][2] = {
 	{0x00,0x00}, {0x00,0x00},
 	{0x04,0x00}, {0x0E,0x00},
@@ -419,9 +401,6 @@ U8 segm_f[19][2] = {
 	{0x00,0x00}
 };
 
-#define	SEGM_GX	0		// origin, x
-#define	SEGM_GY	16		// origin, y
-#define	SEGM_GO	0		// orientation, 2=vert, (19x2 array), 1=vert (19x1 array), 0=horiz (5x3 array)
 U8 segm_g[5][3] = {
 	{0x00,0xFF,0xF0},
 	{0x01,0xFF,0xF8},
@@ -430,508 +409,48 @@ U8 segm_g[5][3] = {
 	{0x00,0xFF,0xF0}
 };
 
-#define	SEGM_PX	3		// origin, x
-#define	SEGM_PY	35		// origin, y
-#define	SEGM_PO	3		// orientation, 3=vert (4x1 array), 2=vert, (19x2 array), 1=vert (19x1 array), 0=horiz (5x3 array)
 U8 segm_p[3] = {0xE0,0xE0,0xE0};
-
-
 
 /////////////////////////////////
 //  	SEGMENTS - SUB         // ***************************************************
 /////////////////////////////////
 
-#define	SEGS_AX	0		// origin, x
-#define	SEGS_AY	0		// origin, y
-#define	SEGS_AO	0		// orientation, 1=vert (12x1 array), 0=horiz (3x2 array)
 U8 segs_a[3][2] = {
 		{0x01,0xF8},
 		{0x03,0xFC},
 		{0x01,0xF8}
 };
 
-#define	SEGS_BX	1		// origin, x
-#define	SEGS_BY	0		// origin, y
-#define	SEGS_BO	1		// orientation, 1=vert (12x1 array), 0=horiz (3x2 array)
 U8 segs_b[12] = {
 		 0x00,0x00,0x02,0x07,
 		 0x07,0x07,0x07,0x07,
 		 0x07,0x07,0x07,0x02};
 
-#define	SEGS_CX	1		// origin, x
-#define	SEGS_CY	13		// origin, y
-#define	SEGS_CO	1		// orientation, 1=vert (12x1 array), 0=horiz (3x2 array)
 U8 segs_c[12] = {
 		 0x02,0x07,0x07,0x07,
 		 0x07,0x07,0x07,0x07,
 		 0x07,0x02,0x00,0x00};
 
-#define	SEGS_DX	0		// origin, x
-#define	SEGS_DY	22		// origin, y
-#define	SEGS_DO	0		// orientation, 1=vert (12x1 array), 0=horiz (3x2 array)
 U8 segs_d[3][2] = {
 		{0x01,0xF8},
 		{0x03,0xFC},
 		{0x01,0xF8}
 };
 
-#define	SEGS_EX	0		// origin, x
-#define	SEGS_EY	13		// origin, y
-#define	SEGS_EO	1		// orientation, 1=vert (12x1 array), 0=horiz (3x2 array)
 U8 segs_e[12] = {
 		 0x04,0x0E,0x0E,0x0E,
 		 0x0E,0x0E,0x0E,0x0E,
 		 0x0E,0x04,0x00,0x00};
 
-#define	SEGS_FX	0		// origin, x
-#define	SEGS_FY	0		// origin, y
-#define	SEGS_FO	1		// orientation, 1=vert (12x1 array), 0=horiz (3x2 array)
 U8 segs_f[12] = {
 		 0x00,0x00,0x04,0x0E,
 		 0x0E,0x0E,0x0E,0x0E,
 		 0x0E,0x0E,0x0E,0x04};
 
-#define	SEGS_GX	0		// origin, x
-#define	SEGS_GY	11		// origin, y
-#define	SEGS_GO	0		// orientation, 1=vert (12x1 array), 0=horiz (3x2 array)
 U8 segs_g[3][2] = {
 		{0x01,0xF8},
 		{0x03,0xFC},
 		{0x01,0xF8}
 };
 
-#define	SEGS_PX	2		// origin, x
-#define	SEGS_PY	23		// origin, y
-#define	SEGS_PO	2		// orientation, 2=vert (2x1 array), 1=vert (12x1 array), 0=horiz (3x2 array)
 U8 segs_p[2] = {0x60,0x60};
-
-//-----------------------------------------------------------------------------
-// wr_mseg() writes 1-of-7-seg LCD memory (main)
-//	seg 0-7 = a-g
-//-----------------------------------------------------------------------------
-void wr_mseg(U8 seg, U8 blank, U16 daddr){
-	U8	mode;	// source array type 0,1,2
-	U16	addr = daddr;
-	U8*	iptr;
-	U8	i;
-	U8	j;
-
-	switch(seg){
-	case 0:	// a
-		addr += SEGM_AX + (SEGM_AY*DROW);
-		mode = SEGM_AO;
-		iptr = *segm_a;
-		break;
-
-	case 1:	// b
-		addr += SEGM_BX + (SEGM_BY*DROW);
-		mode = SEGM_BO;
-		iptr = segm_b;
-		break;
-
-	case 2:	// c
-		addr += SEGM_CX + (SEGM_CY*DROW);
-		mode = SEGM_CO;
-		iptr = segm_c;
-		break;
-
-	case 3:	// d
-		addr += SEGM_DX + (SEGM_DY*DROW);
-		mode = SEGM_DO;
-		iptr = *segm_d;
-		break;
-
-	case 4:	// e
-		addr += SEGM_EX + (SEGM_EY*DROW);
-		mode = SEGM_EO;
-		iptr = *segm_e;
-		break;
-
-	case 5:	// f
-		addr += SEGM_FX + (SEGM_FY*DROW);
-		mode = SEGM_FO;
-		iptr = *segm_f;
-		break;
-
-	case 6:	// g
-		addr += SEGM_GX + (SEGM_GY*DROW);
-		mode = SEGM_GO;
-		iptr = *segm_g;
-		break;
-
-	case 7:	// dp
-		addr += SEGM_PX + (SEGM_PY*DROW);
-		mode = SEGM_PO;
-		iptr = segm_p;
-		break;
-
-	default:
-		mode = 0xff;
-		break;
-	}
-	switch(mode){
-	case 0:
-		for(j=0; j<5; j++){
-			for(i=0; i<3; i++){
-				if(blank){
-					main7[addr+i] &= ~(*iptr++);
-				}else{
-					main7[addr+i] |= *iptr++;
-				}
-			}
-			addr += DROW;
-		}
-		break;
-
-	case 1:
-		for(j=0; j<19; j++){
-			if(blank){
-				main7[addr] &= ~(*iptr++);
-			}else{
-				main7[addr] |= *iptr++;
-			}
-			addr += DROW;
-		}
-		break;
-
-	case 2:
-		for(j=0; j<19; j++){
-			for(i=0; i<2; i++){
-				if(blank){
-					main7[addr+i] &= ~(*iptr++);
-				}else{
-					main7[addr+i] |= *iptr++;
-				}
-			}
-			addr += DROW;
-		}
-		break;
-
-	case 3:
-		for(j=0; j<4; j++){
-			if(blank){
-				main7[addr] &= ~(*iptr++);
-			}else{
-				main7[addr] |= *iptr++;
-			}
-			addr += DROW;
-		}
-		break;
-
-	default:
-		break;
-	}
-}
-
-//-----------------------------------------------------------------------------
-// wr_sseg() writes 1-of-7-seg LCD memory (sub)
-//	seg 0-7 = a-g
-//-----------------------------------------------------------------------------
-void wr_sseg(U8 seg, U8 blank, U16 daddr){
-	U8	mode;	// source array type 0,1,2
-	U16	addr = daddr;
-	U8*	iptr;
-	U8	i;
-	U8	j;
-
-	switch(seg){
-	case 0:	// a
-		addr += SEGS_AX + (SEGM_AY*DROW);
-		mode = SEGS_AO;
-		iptr = *segs_a;
-		break;
-
-	case 1:	// b
-		addr += SEGS_BX + (SEGM_BY*DROW);
-		mode = SEGS_BO;
-		iptr = segs_b;
-		break;
-
-	case 2:	// c
-		addr += SEGS_CX + (SEGS_CY*DROW);
-		mode = SEGS_CO;
-		iptr = segs_c;
-		break;
-
-	case 3:	// d
-		addr += SEGS_DX + (SEGS_DY*DROW);
-		mode = SEGS_DO;
-		iptr = *segs_d;
-		break;
-
-	case 4:	// e
-		addr += SEGS_EX + (SEGS_EY*DROW);
-		mode = SEGS_EO;
-		iptr = segs_e;
-		break;
-
-	case 5:	// f
-		addr += SEGS_FX + (SEGS_FY*DROW);
-		mode = SEGS_FO;
-		iptr = segs_f;
-		break;
-
-	case 6:	// g
-		addr += SEGS_GX + (SEGS_GY*DROW);
-		mode = SEGS_GO;
-		iptr = *segs_g;
-		break;
-
-	case 7:	// dp
-		addr += SEGS_PX + (SEGS_PY*DROW);
-		mode = SEGS_PO;
-		iptr = segs_p;
-		break;
-
-	default:
-		mode = 0xff;
-		break;
-	}
-
-
-	// orientation, 2=vert (2x1 array), 1=vert (12x1 array), 0=horiz (3x2 array)
-
-	switch(mode){
-	case 0:
-		for(j=0; j<3; j++){
-			for(i=0; i<2; i++){
-				if(blank){
-					sub7[addr+i] &= ~(*iptr++);
-				}else{
-					sub7[addr+i] |= *iptr++;
-				}
-			}
-			addr += DROW;
-		}
-		break;
-
-	case 1:
-		for(j=0; j<12; j++){
-			if(blank){
-				sub7[addr] &= ~(*iptr++);
-			}else{
-				sub7[addr] |= *iptr++;
-			}
-			addr += DROW;
-		}
-		break;
-
-	case 2:
-		for(j=0; j<2; j++){
-			if(blank){
-				sub7[addr] &= ~(*iptr++);
-			}else{
-				sub7[addr] |= *iptr++;
-			}
-			addr += DROW;
-		}
-		break;
-
-	default:
-		break;
-	}
-}
-
-//-----------------------------------------------------------------------------
-// wr_mdigit() writes 7-seg digit to LCD memory (main)
-//-----------------------------------------------------------------------------
-void wr_mdigit(char digit, U16 daddr){
-	U8	i = 0;
-	U8	j;
-	U16	addr = daddr;
-	U8*	iptr;
-
-	switch(digit){
-	case '0':
-		iptr = *digit0;
-		break;
-
-	case '1':
-		iptr = *digit1;
-		break;
-
-	case '2':
-		iptr = *digit2;
-		break;
-
-	case '3':
-		iptr = *digit3;
-		break;
-
-	case '4':
-		iptr = *digit4;
-		break;
-
-	case '5':
-		iptr = *digit5;
-		break;
-
-	case '6':
-		iptr = *digit6;
-		break;
-
-	case '7':
-		iptr = *digit7;
-		break;
-
-	case '8':
-		iptr = *digit8;
-		break;
-
-	case '9':
-		iptr = *digit9;
-		break;
-
-	case 'S':
-		iptr = *digitmS;
-		break;
-
-	case '.':
-		break;
-
-	default:
-	case ' ':
-		i = 0xff;
-		break;
-	}
-	if(i){
-		// blank digit
-		for(j=0; j<NUMROWS_M; j++){
-			for(i=0; i<MDWIDE; i++){
-				main7[addr] = 0;
-			}
-			addr += DROW;
-		}
-	}else{
-		if(digit == '.'){
-			addr += NUMROWS_MDP * DROW;
-			for(j=0; j<DIGITDP_Y; j++){
-				main7[addr] |= segm_p[j];
-				addr += DROW;
-			}
-		}else{
-			if(digit == 'S'){
-				addr += NUMROWS_MS * DROW;
-				for(j=0; j<DIGITMS_Y; j++){
-					for(i=0; i<MSDWIDE; i++){
-						main7[addr+i] = *(iptr+i);
-					}
-					iptr = (iptr + MSDWIDE);
-					addr += DROW;
-				}
-			}else{
-				for(j=0; j<NUMROWS_M; j++){
-					for(i=0; i<MDWIDE; i++){
-						main7[addr+i] = *(iptr+i);
-					}
-					iptr = (iptr + MDWIDE);
-					addr += DROW;
-				}
-			}
-		}
-	}
-	return;
-}
-
-//-----------------------------------------------------------------------------
-// wr_sdigit() writes 7-seg digit to LCD memory (sub)
-//-----------------------------------------------------------------------------
-void wr_sdigit(char digit, U16 daddr, U8* aryptr){
-	U8	i = 0;
-	U8	j;
-	U16	addr = daddr;
-	U8*	iptr;
-
-	switch(digit){
-	case '0':
-		iptr = *digits0;
-		break;
-
-	case '1':
-		iptr = *digits1;
-		break;
-
-	case '2':
-		iptr = *digits2;
-		break;
-
-	case '3':
-		iptr = *digits3;
-		break;
-
-	case '4':
-		iptr = *digits4;
-		break;
-
-	case '5':
-		iptr = *digits5;
-		break;
-
-	case '6':
-		iptr = *digits6;
-		break;
-
-	case '7':
-		iptr = *digits7;
-		break;
-
-	case '8':
-		iptr = *digits8;
-		break;
-
-	case '9':
-		iptr = *digits9;
-		break;
-
-	case 'S':
-		iptr = *digitsS;
-		break;
-
-	case '.':
-		break;
-
-	default:
-	case ' ':
-		i = 0xff;
-		break;
-	}
-	if(i){
-		// blank digit
-		for(j=0; j<NUMROWS_S; j++){
-			for(i=0; i<SDWIDE; i++){
-				aryptr[addr] = 0;
-			}
-			addr += DROW;
-		}
-	}else{
-		if(digit == '.'){
-			addr += NUMROWS_SDP * DROW;
-			for(j=0; j<SEGS_PY; j++){
-				aryptr[addr] |= segs_p[j];
-				addr += DROW;
-			}
-		}else{
-			if(digit == 'S'){
-				addr += NUMROWS_SS * DROW;
-				for(j=0; j<DIGITSS_Y-1; j++){
-					for(i=0; i<MSDWIDE; i++){
-						aryptr[addr+i] = *(iptr+i);
-					}
-					iptr = (iptr + MSDWIDE);
-					addr += DROW;
-				}
-
-			}else{
-				for(j=0; j<NUMROWS_S; j++){
-					for(i=0; i<SDWIDE; i++){
-						aryptr[addr+i] = *(iptr+i);
-					}
-					iptr = (iptr + SDWIDE);
-					addr += DROW;
-				}
-			}
-		}
-	}
-	return;
-}
-

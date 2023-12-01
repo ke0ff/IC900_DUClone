@@ -156,8 +156,150 @@ extern	U8	optrow[];		// opt row
 #define	STA6	0x40		// error flag (screen copy)
 #define	STA7	0x80		// Blink - normal display
 
-#define	STA01	(STA1|STA0)		// composite OK
+#define	STA01	(STA1|STA0)	// composite OK
 #define	STA23	STA3		// composite OK, auto
+
+//////////////////////////////////////////////////////////////////////////
+// SPI/LCD defines
+// LCD chip commands
+
+#define	LCD_MEMLEN	32				// chip memory length
+// bit fields
+#define	MEMD0		0x01			// segment bitfields
+#define	MEMD1		0x02			// [2:0] correspond to uPD7225 mem bits
+#define	MEMD2		0x04
+#define	MEM_MODE0	0x10			// (trig) mem mode, 1=seg off, 2=OR, 3=AND, 4=WR
+#define	MEM_MODE1	0x20
+#define	BLINKFL		0x80			// (trig) blink data
+
+// chip status reg defines
+#define	CS_DECODE7	0x01			// 7-seg decoder enabled
+#define	CS_FBLINK	0x02			// fast blink
+#define	CS_SBLINK	0x04			// slow blink
+#define	CS_DISPON	0x08			// disp enable
+
+// chip commands
+#define	MODE_SET	0x49			// /3 time-div, 1/3 bias, 2E-8 fdiv
+#define	BLINK_SLOW	0x1A			// low-bit is flash-rate
+#define	BLINK_FAST	0x1B			//  "   " ...
+#define	BLINK_OFF	0x18			// disable blink
+#define	DISP_ON		0x11			// enable disp
+#define	DISP_OFF	0x10			// blank disp
+#define	WITH_DECODE	0x15			// 7-seg decode
+#define	WITHOUT_DECODE	0x14		// no decode
+#define	LOAD_PTR	0xE0			// OR with (0x1f masked address)
+#define	WR_DMEM		0xD0			// write with (0x0f masked data)
+#define	OR_DMEM		0xB0			// OR with (0x0f masked data)
+#define	AND_DMEM	0x90			// AND with (0x0f masked data)
+#define	CLR_DMEM	0x20			// clear disp. mem
+#define	WR_BMEM		0xC0			// write with (0x0f masked data)
+#define	OR_BMEM		0xA0			// OR with (0x0f masked data)
+#define	AND_BMEM	0x80			// AND with (0x0f masked data)
+#define	CLR_BMEM	0x00			// clear blink. mem
+
+#define	MAX_SRF		7				// #srf bargraph segments
+#define	MSMET_ADDR	0x06
+#define	SSMET_ADDR	0x1b
+
+// LCD segment bit defines (addr and segment map)
+//	CS1
+#define	MMEM_ADDR		0x01
+#define	MDUP		0x1
+#define	MDUP_ADDR		0x04
+#define	MMIN		0x2
+#define	MMIN_ADDR		0x04
+#define	MSKP		0x4
+#define	MSKP_ADDR		0x04
+#define	MTNE		0x1
+#define	MTNE_ADDR		0x05
+#define	MM			0x2
+#define	MM_ADDR			0x05
+
+#define	MSRF6		0x4
+#define	MSRF6_ADDR		0x06
+#define	MSRF3		0x1
+#define	MSRF4		0x2
+#define	MSRF5		0x4
+#define	MSRF345_ADDR	0x07
+#define	MSRF0		0x1
+#define	MSRF1		0x2
+#define	MSRF2		0x4
+#define	MSRF012_ADDR	0x08
+#define	M00			0x2
+#define	M00_ADDR	0x09
+#define	M0_ADDR		0x0a
+
+#define	M6			0x01
+#define	MDP2		0x02
+#define	MDP			0x04
+#define	MDP_ADDR		0x1c
+
+#define	AOW			0x1
+#define	AOW_ADDR		0x1d
+#define	ALOW		0x2
+#define	ALOW_ADDR		0x1d
+
+#define	ARIT		0x1
+#define	ARIT_ADDR		0x1f
+#define	AVXO		0x2
+#define	AVXO_ADDR		0x1f
+#define	ATS			0x4
+#define	ATS_ADDR		0x1f
+
+//	CS2
+#define	SMEM_ADDR	0x02
+#define	SDUP		0x1
+#define	SDUP_ADDR	0x05
+#define	SMIN		0x2
+#define	SMIN_ADDR	0x05
+#define	SSKP		0x4
+#define	SSKP_ADDR	0x05
+#define	STNE		0x1
+#define	STNE_ADDR	0x06
+#define	SM			0x2
+#define	SM_ADDR		0x06
+#define	S00			0x2
+#define	S00_ADDR	0x07
+
+#define	S0_ADDR		0x08
+#define	S6			0x1
+#define	S6_ADDR		0x1a
+
+#define	SDP2		0x02
+#define	SDP			0x04
+#define	SDP_ADDR		0x1a
+
+#define	SSRF6		0x4
+#define	SSRF6_ADDR		0x1b
+#define	SSRF3		0x1
+#define	SSRF4		0x2
+#define	SSRF5		0x4
+#define	SSRF345_ADDR	0x1c
+#define	SSRF0		0x1
+#define	SSRF1		0x2
+#define	SSRF2		0x4
+#define	SSRF012_ADDR	0x1d
+
+#define	ASUB		0x1
+#define	ASUB_ADDR	0x1e
+#define	ALCK		0x2
+#define	ALCK_ADDR	0x1e
+
+#define	APRG		0x1
+#define	APRG_ADDR	0x1f
+#define	AMHZ		0x2
+#define	AMHZ_ADDR	0x1f
+#define	ABND		0x4
+#define	ABND_ADDR	0x1f
+
+#define	CSEGA		0x08			// uPD7225 BCD seg map
+#define	CSEGB		0x01
+#define	CSEGC		0x02
+#define	CSEGD		0x20
+#define	CSEGE		0x80
+#define	CSEGF		0x40
+#define	CSEGG		0x10
+#define	CSEGP		0xff
 
 //------------------------------------------------------------------------------
 // public Function Prototypes
@@ -166,14 +308,72 @@ void clear_main7(void);
 void clear_sub7(void);
 void wr_mseg(U8 seg, U8 blank, U16 daddr);
 void wr_sseg(U8 seg, U8 blank, U16 daddr);
-void wr_mdigit(char digit, U16 daddr);
-void wr_sdigit(char digit, U16 daddr, U8* aryptr);
+void wr_mdigit(char digit, U8 blank, U16 daddr);
+void wr_sdigit(char digit, U8 blank, U16 daddr, U8* aryptr);
 
 void wrdb(U8 data, U8 addr, U8 mask);
 U8 rddb(U8 addr);
 void debug_db(U8 data);
 void lcd_cntl(U8 cmd);
 U8 lcd_stat(U8 mask);
+
+void wr_msym(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr, U8* mptr);
+void wr_msym2(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr, U8* mptr);
+
+#define	SEGOR	1
+#define	SEGNOT	0
+
+void sg_mmin(U8 son);
+void sg_smin(U8 son);
+void sg_mdup(U8 son);
+void sg_sdup(U8 son);
+void sg_mtne(U8 son);
+void sg_stne(U8 son);
+void sg_mmem(U8 son);
+void sg_smem(U8 son);
+void sg_mskp(U8 son);
+void sg_sskp(U8 son);
+void sg_mm0(U8 son);
+void sg_mm1(U8 son);
+void sg_mm2(U8 son);
+void sg_mm3(U8 son);
+void sg_mm4(U8 son);
+void sg_mm5(U8 son);
+void sg_mm6(U8 son);
+void sg_sm0(U8 son);
+void sg_sm1(U8 son);
+void sg_sm2(U8 son);
+void sg_sm3(U8 son);
+void sg_sm4(U8 son);
+void sg_sm5(U8 son);
+void sg_sm6(U8 son);
+void sg_ow(U8 son);
+void sg_low(U8 son);
+void sg_ts(U8 son);
+void sg_mhz(U8 son);
+void sg_prg(U8 son);
+void sg_bnd(U8 son);
+void sg_sub(U8 son);
+void sg_lck(U8 son);
+void sg_vxo(U8 son);
+void sg_rit(U8 son);
+void sg_mss(U8 son);
+void sg_tss(U8 son);
+void sg_tsq(U8 son);
+void sg_dsm(U8 son);
+void sg_dss(U8 son);
+void sg_dsq(U8 son);
+void sg_op1m(U8 son);
+void sg_op1s(U8 son);
+void sg_op1(U8 son);
+void sg_op2m(U8 son);
+void sg_op2s(U8 son);
+void sg_op2(U8 son);
+
+void sg_mbcd(U8 bcdd, U16 digitaddr);
+
+//void wr_ssym(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr);
+//void wr_ssym2(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr);
 
 //U8 swapeo(U8 data);
 
