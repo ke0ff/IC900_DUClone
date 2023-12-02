@@ -44,12 +44,95 @@ U8	optrow[OPTROW_LEN];		// opt row
 U8	CS1_REG;				// CS1 status register
 U8	CS2_REG;				// CS2 status register
 
+// uPD7225 memory arrays
+// segment change memory array
 U8	CS1_trig[LCD_MEMLEN];	// trigger
+// segment on/off memory array
 U8	CS1_dmem[LCD_MEMLEN];	// display mem
+// blink on/off memory array
 U8	CS1_bmem[LCD_MEMLEN];	// blink mem
+
+// segment change memory array
 U8	CS2_trig[LCD_MEMLEN];	// trigger
+// segment on/off memory array
 U8	CS2_dmem[LCD_MEMLEN];	// display mem
+// blink on/off memory array
 U8	CS2_bmem[LCD_MEMLEN];	// blink mem
+
+// segment function LUTs.  The major index is the segment ram array index, the minor index is the
+//		memory bit (0x4, 0x2, or 0x1 masks).  The function parameter is segment "ON" = 1 or "OFF" = 0
+
+void (*cs1_fn[32][3])(U8) = {
+		{ sg_op2s , sg_op2 , sg_op2m },
+		{ sg_bcd_mem_m7b , sg_bcd_mem_m7c , null_fn },
+		{ sg_bcd_mem_m7a , sg_bcd_mem_m7g , sg_bcd_mem_m7d },
+		{ sg_bcd_mem_m7f , sg_bcd_mem_m7e , null_fn },
+		{ sg_mdup , sg_mmin , sg_mskp },
+		{ sg_mtne , sg_mmem , null_fn },
+		{ null_fn , null_fn , sg_mm6 },
+		{ sg_mm3 , sg_mm4 , sg_mm5 },
+		{ sg_mm0 , sg_mm1 , sg_mm2 },
+		{ null_fn , sg_m00 , null_fn },
+		{ sg_bcd_m0b , null_fn , null_fn },
+		{ sg_bcd_m0a , sg_bcd_m0g , sg_bcd_m0d },
+		{ sg_bcd_m0f , sg_bcd_m0e , null_fn },
+		{ sg_bcd_m1b , sg_bcd_m1c , null_fn },
+		{ sg_bcd_m1a , sg_bcd_m1g , sg_bcd_m1d },
+		{ sg_bcd_m1f , sg_bcd_m1e , null_fn },
+		{ sg_bcd_m2b , sg_bcd_m2c , null_fn },
+		{ sg_bcd_m2a , sg_bcd_m2g , sg_bcd_m2d },
+		{ sg_bcd_m2f , sg_bcd_m2e , null_fn },
+		{ sg_bcd_m3b , sg_bcd_m3c , null_fn },
+		{ sg_bcd_m3a , sg_bcd_m3g , sg_bcd_m3d },
+		{ sg_bcd_m3f , sg_bcd_m3e , null_fn },
+		{ sg_bcd_m4b , sg_bcd_m4c , null_fn },
+		{ sg_bcd_m4a , sg_bcd_m4g , sg_bcd_m4d },
+		{ sg_bcd_m4f , sg_bcd_m4e , null_fn },
+		{ sg_bcd_m5b , sg_bcd_m5c , null_fn },
+		{ sg_bcd_m5a , sg_bcd_m5g , sg_bcd_m5d },
+		{ sg_bcd_m5f , sg_bcd_m5e , null_fn },
+		{ sg_bcd_m6bc , sg_mdp2 , sg_mdp },
+		{ sg_ow , sg_low , null_fn },
+		{ sg_tss , sg_tsq , sg_mss },
+		{ sg_rit , sg_vxo , sg_ts }
+};
+
+void (*cs2_fn[32][3])(U8) = {
+		{ sg_op1s , sg_op1 , sg_op1m },
+		{ sg_dsm , sg_dsq , sg_dss },
+		{ sg_bcd_mem_s7b , sg_bcd_mem_s7c , null_fn },
+		{ sg_bcd_mem_s7a , sg_bcd_mem_s7g , sg_bcd_mem_s7d },
+		{ sg_bcd_mem_s7f , sg_bcd_mem_s7e , null_fn },
+		{ sg_sdup , sg_smin , sg_sskp },
+		{ sg_stne , sg_smem , null_fn },
+		{ null_fn , sg_s00 , null_fn },
+		{ sg_bcd_s0b , sg_bcd_s0c , null_fn },
+		{ sg_bcd_s0a , sg_bcd_s0g , sg_bcd_s0d },
+		{ sg_bcd_s0f , sg_bcd_s0e , null_fn },
+		{ sg_bcd_s1b , sg_bcd_s1c , null_fn },
+		{ sg_bcd_s1a , sg_bcd_s1g , sg_bcd_s1d },
+		{ sg_bcd_s1f , sg_bcd_s1e , null_fn },
+		{ sg_bcd_s2b , sg_bcd_s2c , null_fn },
+		{ sg_bcd_s2a , sg_bcd_s2g , sg_bcd_s2d },
+		{ sg_bcd_s2f , sg_bcd_s2e , null_fn },
+		{ sg_bcd_s3b , sg_bcd_s3c , null_fn },
+		{ sg_bcd_s3a , sg_bcd_s3g , sg_bcd_s3d },
+		{ sg_bcd_s3f , sg_bcd_s3e , null_fn },
+		{ sg_bcd_s4b , sg_bcd_s4c , null_fn },
+		{ sg_bcd_s4a , sg_bcd_s4g , sg_bcd_s4d },
+		{ sg_bcd_s4f , sg_bcd_s4e , null_fn },
+		{ sg_bcd_s5b , sg_bcd_s5c , null_fn },
+		{ sg_bcd_s5a , sg_bcd_s5g , sg_bcd_s5d },
+		{ sg_bcd_s5f , sg_bcd_s5e , sg_bcd_s6bc },
+		{ sg_sdp2 , sg_sdp , null_fn },
+		{ null_fn , sg_sm6 , sg_sm3 },
+		{ sg_sm4 , sg_sm5 , sg_sm0 },
+		{ sg_sm1 , sg_sm2 , sg_sub },
+		{ sg_lck , null_fn , sg_prg },
+		{ sg_mhz , sg_bnd , sg_ts }
+};
+
+//	(*fun_ptr_arr[ch])(a, b);
 
 //-----------------------------------------------------------------------------
 // Local Fn Declarations
@@ -96,9 +179,6 @@ void wrdb(U8 data, U8 addr, U8 mask){
 
 	do{
 		i = rddb(1);
-/*		if(i&STA6){
-			i |= 0x10;
-		}*/
 		i &= mask;
 	}while(i != mask);
 	GPIO_PORTB_DIR_R = 0xff;				// port = out
@@ -106,9 +186,9 @@ void wrdb(U8 data, U8 addr, U8 mask){
 	if(addr) css |= TADDR;
 	GPIO_PORTE_DATA_R = css;				// store addr, bus idle
 	GPIO_PORTE_DATA_R = css & ~(nTWR|nTCS);	// set OE & WR
-//	for(i=0; i<TLEN; i++);
+	for(i=0; i<TLEN; i++);
 	GPIO_PORTE_DATA_R = css & ~(nTWR);		// store bus idle
-//	for(i=0; i<TLEN; i++);
+	for(i=0; i<TLEN; i++);
 	GPIO_PORTE_DATA_R = css;				// store bus idle
 	GPIO_PORTB_DIR_R = 0;					// port = in
 
@@ -123,16 +203,16 @@ void wrdb(U8 data, U8 addr, U8 mask){
 U8 rddb(U8 addr){
 	U8	css = nTRD|nTWR|nTCS; //|addr;	// init port control to idle
 	U8	data;
-//	U8	i;
+	U8	i;
 
 	GPIO_PORTB_DIR_R = 0;					// port = in
 	if(addr) css |= TADDR;
 	GPIO_PORTE_DATA_R = css;				// store addr, bus idle
 	GPIO_PORTE_DATA_R = css & ~(nTRD|nTCS);	// set OE & RD
-//	for(i=0; i<TLEN; i++);
+	for(i=0; i<TLEN; i++);
 	data = GPIO_PORTB_DATA_R;				// get data from port
 	GPIO_PORTE_DATA_R = css;				// store bus idle
-//	for(i=0; i<TLEN; i++);
+	for(i=0; i<TLEN; i++);
 	return swapeo(data);
 }
 
@@ -1537,16 +1617,136 @@ void sg_op2(U8 son){
 }
 
 //-----------------------------------------------------------------------------
+// sg_mdp() set/clr the mdp segment
+//-----------------------------------------------------------------------------
+void sg_mdp(U8 son){
+
+	switch(son){
+	case SEGOR:
+		wr_mseg(CSEGP, 0, MDADDR3);
+		break;
+
+	case SEGNOT:
+		wr_mseg(CSEGP, 1, MDADDR3);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_mdp2() set/clr the mdp2 segment
+//-----------------------------------------------------------------------------
+void sg_mdp2(U8 son){
+
+	switch(son){
+	case SEGOR:
+		wr_mseg(CSEGP, 0, MDADDR6);
+		break;
+
+	case SEGNOT:
+		wr_mseg(CSEGP, 1, MDADDR6);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_sdp() set/clr the sdp segment
+//-----------------------------------------------------------------------------
+void sg_sdp(U8 son){
+
+	switch(son){
+	case SEGOR:
+		wr_sseg(CSEGP, 0, SDADDR3, sub7);
+		break;
+
+	case SEGNOT:
+		wr_sseg(CSEGP, 1, SDADDR3, sub7);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_sdp2() set/clr the sdp2 segment
+//-----------------------------------------------------------------------------
+void sg_sdp2(U8 son){
+
+	switch(son){
+	case SEGOR:
+		wr_sseg(CSEGP, 0, SDADDR6, sub7);
+		break;
+
+	case SEGNOT:
+		wr_sseg(CSEGP, 1, SDADDR6, sub7);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_m00() set/clr the m00 segment
+//-----------------------------------------------------------------------------
+void sg_m00(U8 son){
+
+	switch(son){
+	case SEGOR:
+		wr_mdigit('S', 0, MDADDRS);
+		break;
+
+	case SEGNOT:
+		wr_mdigit('S', 1, MDADDRS);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_s00() set/clr the s00 segment
+//-----------------------------------------------------------------------------
+void sg_s00(U8 son){
+
+	switch(son){
+	case SEGOR:
+		wr_sdigit('S', 0, SDADDRS, sub7);
+		break;
+
+	case SEGNOT:
+		wr_sdigit('S', 1, SDADDRS, sub7);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
 // sg_mbcd() set/clr bcd segments - main
 //	bcdd = bcd data [efdg a-cb]
 //	Loop through set bits and clear not set bits
 //-----------------------------------------------------------------------------
-void sg_mbcd(U8 bcdd, U16 digitaddr){
+void sg_mbcd(U8 bcdd, U16 digitaddr, U8 blank, U8 main_sel){
 	U8	i;
 
-	wr_mdigit('8', 1, digitaddr);
+//	wr_mdigit('8', 1, digitaddr);
 	for(i=0x80; i!=0; i>>=1){
-		wr_mseg(bcdd & i, 0, digitaddr);
+		wr_mseg(bcdd & i, blank, digitaddr);
 	}
 	return;
 }
@@ -1556,64 +1756,2288 @@ void sg_mbcd(U8 bcdd, U16 digitaddr){
 //	bcdd = bcd data [efdg a-cb]
 //	Loop through set bits and clear not set bits
 //-----------------------------------------------------------------------------
-void sg_sbcd(U8 bcdd, U16 digitaddr, U8 main_sel){
+void sg_sbcd(U8 bcdd, U16 digitaddr, U8 blank, U8 main_sel){
 	U8	i;
 
 	if(main_sel){
-		wr_sdigit('8', 1, digitaddr, main7);
+//		wr_sdigit('8', 1, digitaddr, main7);
 		for(i=0x80; i!=0; i>>=1){
-			wr_sseg(bcdd & i, 0, digitaddr, main7);
+			wr_sseg(bcdd & i, blank, digitaddr, main7);
 		}
 	}else{
-		wr_sdigit('8', 1, digitaddr, sub7);
+//		wr_sdigit('8', 1, digitaddr, sub7);
 		for(i=0x80; i!=0; i>>=1){
-			wr_sseg(bcdd & i, 0, digitaddr, sub7);
+			wr_sseg(bcdd & i, blank, digitaddr, sub7);
 		}
 	}
 	return;
 }
 
-/*
 //-----------------------------------------------------------------------------
-// wr_ssym2() writes a 2d array symbol to display mem - sub
+// null_fn() is a fail-safe dummy fn to fill empty segments in the segmem bitmaps
 //-----------------------------------------------------------------------------
-void wr_ssym2(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr){
-    U8  x;
-    U8  y;
-    U16 addr = daddr;
-    U8* iptr = sptr;
+void null_fn(U8 son){
+	volatile	U8	i=son;
 
-    for(y=0; y<ylen; y++){
-        for(x=0; x<xlen; x++){
-            if(blank){
-                sub7[addr+x] &= ~(*(iptr+x));
-            }else{
-                sub7[addr+x] |= *(iptr+x);
-            }
-        }
-        iptr = (iptr + xlen);
-        addr += DROW;
-    }
-    return;
+	return;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+//			BCD segment Fns
+//
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+// main digit _m0 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_m0a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m0a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGA, MDADDR0, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGA, MDADDR0, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
 }
 
 //-----------------------------------------------------------------------------
-// wr_ssym() writes a 1d array symbol to display mem - sub
+// sg_bcd_m0b() set/clr bcd seg (main/sub, digit addr, segid)
 //-----------------------------------------------------------------------------
-void wr_ssym(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr){
-    U8  y;
-    U16 addr = daddr;
-    U8* iptr = sptr;
+void sg_bcd_m0b(U8 son){
 
-    for(y=0; y<ylen; y++){
-        if(blank){
-            sub7[addr] &= ~(*(iptr++));
-        }else{
-            sub7[addr] |= *(iptr++);
-        }
-        addr += DROW;
-    }
-    return;
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGB, MDADDR0, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGB, MDADDR0, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m0c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m0c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGC, MDADDR0, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGC, MDADDR0, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m0d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m0d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGD, MDADDR0, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGD, MDADDR0, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m0e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m0e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGE, MDADDR0, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGE, MDADDR0, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m0f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m0f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGF, MDADDR0, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGF, MDADDR0, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m0g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m0g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGG, MDADDR0, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGG, MDADDR0, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+// main digit _m1 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_m1a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m1a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGA, MDADDR1, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGA, MDADDR1, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m1b() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m1b(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGB, MDADDR1, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGB, MDADDR1, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m1c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m1c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGC, MDADDR1, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGC, MDADDR1, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m1d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m1d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGD, MDADDR1, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGD, MDADDR1, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m1e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m1e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGE, MDADDR1, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGE, MDADDR1, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m1f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m1f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGF, MDADDR1, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGF, MDADDR1, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m1g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m1g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGG, MDADDR1, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGG, MDADDR1, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+// main digit _m2 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_m2a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m2a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGA, MDADDR2, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGA, MDADDR2, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m2b() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m2b(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGB, MDADDR2, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGB, MDADDR2, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m2c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m2c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGC, MDADDR2, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGC, MDADDR2, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m2d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m2d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGD, MDADDR2, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGD, MDADDR2, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m2e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m2e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGE, MDADDR2, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGE, MDADDR2, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m2f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m2f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGF, MDADDR2, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGF, MDADDR2, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m2g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m2g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGG, MDADDR2, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGG, MDADDR2, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+// main digit _m3 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_m3a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m3a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGA, MDADDR3, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGA, MDADDR3, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m3b() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m3b(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGB, MDADDR3, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGB, MDADDR3, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m3c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m3c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGC, MDADDR3, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGC, MDADDR3, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m3d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m3d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGD, MDADDR3, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGD, MDADDR3, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m3e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m3e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGE, MDADDR3, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGE, MDADDR3, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m3f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m3f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGF, MDADDR3, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGF, MDADDR3, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m3g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m3g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGG, MDADDR3, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGG, MDADDR3, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+// main digit _m4 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_m4a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m4a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGA, MDADDR4, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGA, MDADDR4, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m4b() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m4b(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGB, MDADDR4, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGB, MDADDR4, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m4c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m4c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGC, MDADDR4, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGC, MDADDR4, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m4d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m4d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGD, MDADDR4, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGD, MDADDR4, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m4e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m4e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGE, MDADDR4, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGE, MDADDR4, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m4f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m4f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGF, MDADDR4, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGF, MDADDR4, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m4g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m4g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGG, MDADDR4, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGG, MDADDR4, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+// main digit _m5 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_m5a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m5a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGA, MDADDR5, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGA, MDADDR5, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m5b() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m5b(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGB, MDADDR5, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGB, MDADDR5, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m5c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m5c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGC, MDADDR5, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGC, MDADDR5, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m5d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m5d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGD, MDADDR5, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGD, MDADDR5, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m5e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m5e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGE, MDADDR5, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGE, MDADDR5, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m5f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m5f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGF, MDADDR5, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGF, MDADDR5, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m5g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m5g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGG, MDADDR5, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGG, MDADDR5, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+// main digit _m6 ///////////////////////////////////////
+/*//-----------------------------------------------------------------------------
+// sg_bcd_m6a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m6a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGA, MDADDR6, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGA, MDADDR6, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
 }*/
 
-//eof
+//-----------------------------------------------------------------------------
+// sg_bcd_m6bc() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m6bc(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGB|CSEGC, MDADDR6, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGB|CSEGC, MDADDR6, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+/*
+//-----------------------------------------------------------------------------
+// sg_bcd_m6c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m6c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGC, MDADDR6, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGC, MDADDR6, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m6d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m6d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGD, MDADDR6, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGD, MDADDR6, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m6e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m6e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGE, MDADDR6, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGE, MDADDR6, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m6f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m6f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGF, MDADDR6, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGF, MDADDR6, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_m6g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_m6g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGG, MDADDR6, 0, 1);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGG, MDADDR6, 1, 1);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}*/
+
+//////////////////////////////              ////////////////////////////////
+// sub_digit _s0 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_s0a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s0a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGA, SDADDR0, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGA, SDADDR0, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s0b() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s0b(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGB, SDADDR0, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGB, SDADDR0, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s0c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s0c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGC, SDADDR0, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGC, SDADDR0, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s0d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s0d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGD, SDADDR0, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGD, SDADDR0, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s0e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s0e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGE, SDADDR0, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGE, SDADDR0, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s0f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s0f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGF, SDADDR0, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGF, SDADDR0, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s0g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s0g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGG, SDADDR0, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGG, SDADDR0, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+// sub_digit _s1 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_s1a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s1a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGA, SDADDR1, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGA, SDADDR1, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s1b() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s1b(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGB, SDADDR1, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGB, SDADDR1, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s1c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s1c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGC, SDADDR1, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGC, SDADDR1, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s1d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s1d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGD, SDADDR1, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGD, SDADDR1, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s1e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s1e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGE, SDADDR1, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGE, SDADDR1, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s1f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s1f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGF, SDADDR1, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGF, SDADDR1, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s1g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s1g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGG, SDADDR1, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGG, SDADDR1, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+// sub_digit _s2 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_s2a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s2a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGA, SDADDR2, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGA, SDADDR2, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s2b() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s2b(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGB, SDADDR2, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGB, SDADDR2, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s2c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s2c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGC, SDADDR2, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGC, SDADDR2, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s2d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s2d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGD, SDADDR2, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGD, SDADDR2, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s2e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s2e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGE, SDADDR2, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGE, SDADDR2, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s2f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s2f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGF, SDADDR2, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGF, SDADDR2, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s2g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s2g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGG, SDADDR2, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGG, SDADDR2, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+// sub_digit _s3 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_s3a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s3a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGA, SDADDR3, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGA, SDADDR3, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s3b() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s3b(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGB, SDADDR3, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGB, SDADDR3, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s3c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s3c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGC, SDADDR3, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGC, SDADDR3, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s3d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s3d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGD, SDADDR3, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGD, SDADDR3, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s3e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s3e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGE, SDADDR3, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGE, SDADDR3, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s3f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s3f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGF, SDADDR3, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGF, SDADDR3, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s3g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s3g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGG, SDADDR3, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGG, SDADDR3, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+// sub_digit _s4 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_s4a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s4a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGA, SDADDR4, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGA, SDADDR4, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s4b() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s4b(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGB, SDADDR4, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGB, SDADDR4, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s4c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s4c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGC, SDADDR4, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGC, SDADDR4, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s4d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s4d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGD, SDADDR4, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGD, SDADDR4, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s4e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s4e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGE, SDADDR4, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGE, SDADDR4, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s4f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s4f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGF, SDADDR4, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGF, SDADDR4, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s4g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s4g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGG, SDADDR4, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGG, SDADDR4, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+// sub_digit _s5 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_s5a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s5a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGA, SDADDR5, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGA, SDADDR5, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s5b() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s5b(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGB, SDADDR5, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGB, SDADDR5, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s5c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s5c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGC, SDADDR5, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGC, SDADDR5, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s5d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s5d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGD, SDADDR5, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGD, SDADDR5, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s5e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s5e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGE, SDADDR5, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGE, SDADDR5, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s5f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s5f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGF, SDADDR5, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGF, SDADDR5, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s5g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s5g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGG, SDADDR5, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGG, SDADDR5, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+// sub_digit _s6 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_s6a() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+/*void sg_bcd_s6a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGA, SDADDR6, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGA, SDADDR6, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}*/
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s6bc() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s6bc(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGB|CSEGC, SDADDR6, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGB|CSEGC, SDADDR6, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+/*
+//-----------------------------------------------------------------------------
+// sg_bcd_s6c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s6c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGC, SDADDR6, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGC, SDADDR6, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s6d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s6d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGD, SDADDR6, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGD, SDADDR6, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s6e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s6e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGE, SDADDR6, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGE, SDADDR6, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s6f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s6f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGF, SDADDR6, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGF, SDADDR6, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_s6g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_s6g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGG, SDADDR6, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGG, SDADDR6, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+*/
+/////////////////////////                              ///////////////////////////////
+
+//-----------------------------------------------------------------------------
+// sg_digit_mem_s7 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_s7g() set/clr mem bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_s7a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGA, MEMSCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGA, MEMSCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_s7b() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_s7b(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGB, MEMSCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGB, MEMSCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_s7c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_s7c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGC, MEMSCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGC, MEMSCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_s7d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_s7d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGD, MEMSCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGD, MEMSCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_s7e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_s7e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGE, MEMSCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGE, MEMSCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_s7f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_s7f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGF, MEMSCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGF, MEMSCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_s7g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_s7g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_sbcd(CSEGG, MEMSCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_sbcd(CSEGG, MEMSCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+/////////////////////////////////                                  //////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_digit_mem_m7 ///////////////////////////////////////
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_m7g() set/clr mem bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_m7a(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGA, MEMMCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGA, MEMMCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_m7b() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_m7b(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGB, MEMMCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGB, MEMMCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_m7c() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_m7c(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGC, MEMMCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGC, MEMMCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_m7d() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_m7d(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGD, MEMMCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGD, MEMMCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_m7e() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_m7e(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGE, MEMMCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGE, MEMMCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_m7f() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_m7f(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGF, MEMMCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGF, MEMMCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_bcd_mem_m7g() set/clr bcd seg (main/sub, digit addr, segid)
+//-----------------------------------------------------------------------------
+void sg_bcd_mem_m7g(U8 son){
+
+	switch(son){
+	case SEGOR:
+		sg_mbcd(CSEGG, MEMMCH_ADDR, 0, 0);
+		break;
+
+	case SEGNOT:
+		sg_mbcd(CSEGG, MEMMCH_ADDR, 1, 0);
+		break;
+
+	default:
+		break;
+	}
+	return;
+}

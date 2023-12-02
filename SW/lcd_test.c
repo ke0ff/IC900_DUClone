@@ -375,7 +375,7 @@ void loop(void)
 	U8	digit_seg[] = { CSEGA|CSEGB|CSEGC|CSEGD|CSEGE|CSEGF,
 						CSEGB|CSEGC, CSEGA|CSEGB|CSEGE|CSEGD|CSEGG, CSEGA|CSEGB|CSEGC|CSEGD|CSEGG,
 						CSEGF|CSEGB|CSEGC|CSEGG, CSEGA|CSEGF|CSEGC|CSEGD|CSEGG, CSEGA|CSEGC|CSEGD|CSEGE|CSEGF|CSEGG,
-						CSEGA|CSEGB|CSEGC, CSEGA|CSEGB|CSEGC|CSEGD|CSEGE|CSEGF|CSEGG, CSEGA|CSEGB|CSEGC|CSEGF|CSEGG,
+						CSEGA|CSEGB|CSEGC, CSEGA|CSEGB|CSEGC|CSEGD|CSEGE|CSEGF|CSEGG, CSEGA|CSEGB|CSEGC|CSEGD|CSEGF|CSEGG,
 						0
 	};
 
@@ -389,8 +389,8 @@ void loop(void)
 	clear_main7();
 //	wr_mdigit('1', 0, MDADDR0);
 //	wr_mdigit('2', 0, MDADDR1);
-	sg_mbcd(CSEGB|CSEGC, MDADDR0);
-	sg_mbcd(CSEGA|CSEGB|CSEGG|CSEGE|CSEGD, MDADDR1);
+	sg_mbcd(CSEGB|CSEGC, MDADDR0, 0, 1);
+	sg_mbcd(CSEGA|CSEGB|CSEGG|CSEGE|CSEGD, MDADDR1, 0, 1);
 //	sg_mbcd(CSEGP, MDADDR3);
 //	sg_mbcd(CSEGP, MDADDR6);
 
@@ -401,10 +401,10 @@ void loop(void)
 //	wr_mdigit('.', 0, MDADDR4);
 	wr_mdigit('0', 0, MDADDR5);
 	wr_mdigit('0', 0, MDADDR6);
-	wr_mdigit('S', 0, MDADDR7);
+	wr_mdigit('S', 0, MDADDRS);
 
 	wr_mseg(CSEGP, 0, MDADDR3);
-	wr_mseg(CSEGP, 0, MDADDR6);
+	wr_mseg(CSEGP, 0, MDADDR0);
 
 	clear_sub7();
 	wr_sdigit(' ', 0, SDADDR0, sub7);
@@ -416,11 +416,13 @@ void loop(void)
 	wr_sdigit('6', 0, SDADDR4, sub7);
 	wr_sdigit('7', 0, SDADDR5, sub7);
 	wr_sdigit('5', 0, SDADDR6, sub7);
-	wr_sdigit('S', 0, SDADDR7, sub7);
+	wr_sdigit('S', 0, SDADDRS, sub7);
 	wr_sseg(CSEGP, 0, SDADDR3, sub7);
 
-	sg_sbcd(digit_seg[0], MEMMCH_ADDR, 1);
-	sg_sbcd(digit_seg[0], MEMSCH_ADDR, 0);
+	sg_sbcd(digit_seg[8], MEMMCH_ADDR, 1, 1);
+	sg_sbcd(digit_seg[0], MEMMCH_ADDR, 0, 1);
+	sg_sbcd(digit_seg[8], MEMSCH_ADDR, 1, 0);
+	sg_sbcd(digit_seg[0], MEMSCH_ADDR, 0, 0);
 
 //	wr_sdigit('8', 0, MEMMCH_ADDR, main7);
 //	wr_sdigit('8', 0, MEMSCH_ADDR, sub7);
@@ -547,8 +549,10 @@ void loop(void)
 		sg_op2s(i);
 		sg_op2(i);
 
-		sg_sbcd(digit_seg[j>>1], MEMMCH_ADDR, 1);
-		sg_sbcd(digit_seg[j>>1], MEMSCH_ADDR, 0);
+		sg_sbcd(digit_seg[8], MEMMCH_ADDR, 1, 1);
+		sg_sbcd(digit_seg[8], MEMSCH_ADDR, 1, 0);
+		sg_sbcd(digit_seg[j>>1], MEMMCH_ADDR, 0, 1);
+		sg_sbcd(digit_seg[j>>1], MEMSCH_ADDR, 0, 0);
 
 		dispImage(main7);
 		dispImageS(sub7);

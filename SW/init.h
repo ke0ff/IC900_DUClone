@@ -39,7 +39,7 @@
 #define XTAL 1
 //#define XTAL_FREQ	SYSCTL_RCC_XTAL_16MHZ	// set value of external XTAL
 #define XTAL_FREQ	SYSCTL_RCC_XTAL_20MHZ	// set value of external XTAL
-#define SYSCLK	(60000000L)					// sysclk freq (bus clk)
+#define SYSCLK	(80000000L)					// sysclk freq (bus clk)
 //#define SYSCLK	(66667000L)				// sysclk freq (bus clk)
 #else
 #define XTAL 0

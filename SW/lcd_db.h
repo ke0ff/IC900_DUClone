@@ -36,14 +36,14 @@
 // LCD digit addresses - Main
 #define	MDWIDE		3
 #define	MSDWIDE		2
-#define	MDADDR0		0
-#define	MDADDR1		(MDADDR0+MDWIDE)
-#define	MDADDR2		(MDADDR1+MDWIDE)
-#define	MDADDR3		(MDADDR2+MDWIDE)
-#define	MDADDR4		(MDADDR3+MDWIDE)
-#define	MDADDR5		(MDADDR4+MDWIDE)
-#define	MDADDR6		(MDADDR5+MDWIDE)
-#define	MDADDR7		(MDADDR6+MDWIDE)
+#define	MDADDR6		0
+#define	MDADDR5		(MDADDR6+MDWIDE)
+#define	MDADDR4		(MDADDR5+MDWIDE)
+#define	MDADDR3		(MDADDR4+MDWIDE)
+#define	MDADDR2		(MDADDR3+MDWIDE)
+#define	MDADDR1		(MDADDR2+MDWIDE)
+#define	MDADDR0		(MDADDR1+MDWIDE)
+#define	MDADDRS		(MDADDR0+MDWIDE)
 
 #define	DROW		(240/8)
 #define	NUMROWS_M	38
@@ -51,14 +51,14 @@
 #define	NUMROWS_MS	20
 
 #define	SDWIDE		2
-#define	SDADDR0		(7+(DROW*4))
-#define	SDADDR1		(SDADDR0+SDWIDE)
-#define	SDADDR2		(SDADDR1+SDWIDE)
-#define	SDADDR3		(SDADDR2+SDWIDE)
-#define	SDADDR4		(SDADDR3+SDWIDE)
-#define	SDADDR5		(SDADDR4+SDWIDE)
-#define	SDADDR6		(SDADDR5+SDWIDE)
-#define	SDADDR7		(SDADDR6+SDWIDE)
+#define	SDADDR6		(7+(DROW*4))
+#define	SDADDR5		(SDADDR6+SDWIDE)
+#define	SDADDR4		(SDADDR5+SDWIDE)
+#define	SDADDR3		(SDADDR4+SDWIDE)
+#define	SDADDR2		(SDADDR3+SDWIDE)
+#define	SDADDR1		(SDADDR2+SDWIDE)
+#define	SDADDR0		(SDADDR1+SDWIDE)
+#define	SDADDRS		(SDADDR0+SDWIDE)
 
 
 #define	OW_ADDR		(0)
@@ -106,7 +106,7 @@
 #define	SEGG	6
 #define	SEGDP	7
 
-#define	CLUSTER1_M			(MDADDR7+1)
+#define	CLUSTER1_M			(MDADDRS+1)
 #define	TONMSYM_ADDR		(CLUSTER1_M)
 #define	DUPMSYM_ADDR		(CLUSTER1_M+4)
 #define	MINMSYM_ADDR		((DUPMSYM_ADDR-1)+((DROW*4)))
@@ -114,7 +114,7 @@
 #define	SKPMSYM_ADDR		(MEMMSYM_ADDR+(DROW*13))
 #define	MEMMCH_ADDR			(DUPMSYM_ADDR+(DROW*13))
 
-#define	CLUSTER1_S			((SDADDR7+1)-(DROW*2))
+#define	CLUSTER1_S			((SDADDRS+1)-(DROW*2))
 #define	TONSSYM_ADDR		CLUSTER1_S
 #define	DUPSSYM_ADDR		(CLUSTER1_S+4)
 #define	MINSSYM_ADDR		((DUPSSYM_ADDR-1)+((DROW*4)))
@@ -369,13 +369,126 @@ void sg_op1(U8 son);
 void sg_op2m(U8 son);
 void sg_op2s(U8 son);
 void sg_op2(U8 son);
+void sg_mdp(U8 son);
+void sg_mdp2(U8 son);
+void sg_sdp(U8 son);
+void sg_sdp2(U8 son);
+void sg_m00(U8 son);
+void sg_s00(U8 son);
 
-void sg_mbcd(U8 bcdd, U16 digitaddr);
-void sg_sbcd(U8 bcdd, U16 digitaddr, U8 main_sel);
+void sg_mbcd(U8 bcdd, U16 digitaddr, U8 blank, U8 main_sel);
+void sg_sbcd(U8 bcdd, U16 digitaddr, U8 blank, U8 main_sel);
 
-//void wr_ssym(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr);
-//void wr_ssym2(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr);
+void null_fn(U8 son);
 
-//U8 swapeo(U8 data);
+void sg_bcd_m0a(U8 son);
+void sg_bcd_m0b(U8 son);
+void sg_bcd_m0c(U8 son);
+void sg_bcd_m0d(U8 son);
+void sg_bcd_m0e(U8 son);
+void sg_bcd_m0f(U8 son);
+void sg_bcd_m0g(U8 son);
+void sg_bcd_m1a(U8 son);
+void sg_bcd_m1b(U8 son);
+void sg_bcd_m1c(U8 son);
+void sg_bcd_m1d(U8 son);
+void sg_bcd_m1e(U8 son);
+void sg_bcd_m1f(U8 son);
+void sg_bcd_m1g(U8 son);
+void sg_bcd_m2a(U8 son);
+void sg_bcd_m2b(U8 son);
+void sg_bcd_m2c(U8 son);
+void sg_bcd_m2d(U8 son);
+void sg_bcd_m2e(U8 son);
+void sg_bcd_m2f(U8 son);
+void sg_bcd_m2g(U8 son);
+void sg_bcd_m3a(U8 son);
+void sg_bcd_m3b(U8 son);
+void sg_bcd_m3c(U8 son);
+void sg_bcd_m3d(U8 son);
+void sg_bcd_m3e(U8 son);
+void sg_bcd_m3f(U8 son);
+void sg_bcd_m3g(U8 son);
+void sg_bcd_m4a(U8 son);
+void sg_bcd_m4b(U8 son);
+void sg_bcd_m4c(U8 son);
+void sg_bcd_m4d(U8 son);
+void sg_bcd_m4e(U8 son);
+void sg_bcd_m4f(U8 son);
+void sg_bcd_m4g(U8 son);
+void sg_bcd_m5a(U8 son);
+void sg_bcd_m5b(U8 son);
+void sg_bcd_m5c(U8 son);
+void sg_bcd_m5d(U8 son);
+void sg_bcd_m5e(U8 son);
+void sg_bcd_m5f(U8 son);
+void sg_bcd_m5g(U8 son);
+void sg_bcd_m6bc(U8 son);
+
+void sg_bcd_s0a(U8 son);
+void sg_bcd_s0b(U8 son);
+void sg_bcd_s0c(U8 son);
+void sg_bcd_s0d(U8 son);
+void sg_bcd_s0e(U8 son);
+void sg_bcd_s0f(U8 son);
+void sg_bcd_s0g(U8 son);
+void sg_bcd_s1a(U8 son);
+void sg_bcd_s1b(U8 son);
+void sg_bcd_s1c(U8 son);
+void sg_bcd_s1d(U8 son);
+void sg_bcd_s1e(U8 son);
+void sg_bcd_s1f(U8 son);
+void sg_bcd_s1g(U8 son);
+void sg_bcd_s2a(U8 son);
+void sg_bcd_s2b(U8 son);
+void sg_bcd_s2c(U8 son);
+void sg_bcd_s2d(U8 son);
+void sg_bcd_s2e(U8 son);
+void sg_bcd_s2f(U8 son);
+void sg_bcd_s2g(U8 son);
+void sg_bcd_s3a(U8 son);
+void sg_bcd_s3b(U8 son);
+void sg_bcd_s3c(U8 son);
+void sg_bcd_s3d(U8 son);
+void sg_bcd_s3e(U8 son);
+void sg_bcd_s3f(U8 son);
+void sg_bcd_s3g(U8 son);
+void sg_bcd_s4a(U8 son);
+void sg_bcd_s4b(U8 son);
+void sg_bcd_s4c(U8 son);
+void sg_bcd_s4d(U8 son);
+void sg_bcd_s4e(U8 son);
+void sg_bcd_s4f(U8 son);
+void sg_bcd_s4g(U8 son);
+void sg_bcd_s5a(U8 son);
+void sg_bcd_s5b(U8 son);
+void sg_bcd_s5c(U8 son);
+void sg_bcd_s5d(U8 son);
+void sg_bcd_s5e(U8 son);
+void sg_bcd_s5f(U8 son);
+void sg_bcd_s5g(U8 son);
+//void sg_bcd_s6a(U8 son);
+void sg_bcd_s6bc(U8 son);
+/*void sg_bcd_s6c(U8 son);
+void sg_bcd_s6d(U8 son);
+void sg_bcd_s6e(U8 son);
+void sg_bcd_s6f(U8 son);
+void sg_bcd_s6g(U8 son);*/
+
+void sg_bcd_mem_m7a(U8 son);
+void sg_bcd_mem_m7b(U8 son);
+void sg_bcd_mem_m7c(U8 son);
+void sg_bcd_mem_m7d(U8 son);
+void sg_bcd_mem_m7e(U8 son);
+void sg_bcd_mem_m7f(U8 son);
+void sg_bcd_mem_m7g(U8 son);
+
+void sg_bcd_mem_s7a(U8 son);
+void sg_bcd_mem_s7b(U8 son);
+void sg_bcd_mem_s7c(U8 son);
+void sg_bcd_mem_s7d(U8 son);
+void sg_bcd_mem_s7e(U8 son);
+void sg_bcd_mem_s7f(U8 son);
+void sg_bcd_mem_s7g(U8 son);
 
 //eof
