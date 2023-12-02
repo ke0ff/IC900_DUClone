@@ -310,7 +310,7 @@ void wr_mseg(U8 seg, U8 blank, U16 daddr){
 // wr_sseg() writes 1-of-7-seg LCD memory (sub)
 //  seg 0-7 = a-g
 //-----------------------------------------------------------------------------
-void wr_sseg(U8 seg, U8 blank, U16 daddr){
+void wr_sseg(U8 seg, U8 blank, U16 daddr, U8* aryptr){
     U8  mode;   // source array type 0,1,2
     U16 addr = daddr;
     U8* iptr;
@@ -379,9 +379,9 @@ void wr_sseg(U8 seg, U8 blank, U16 daddr){
         for(j=0; j<3; j++){
             for(i=0; i<2; i++){
                 if(blank){
-                    sub7[addr+i] &= ~(*iptr++);
+                	aryptr[addr+i] &= ~(*iptr++);
                 }else{
-                    sub7[addr+i] |= *iptr++;
+                	aryptr[addr+i] |= *iptr++;
                 }
             }
             addr += DROW;
@@ -391,9 +391,9 @@ void wr_sseg(U8 seg, U8 blank, U16 daddr){
     case 1:
         for(j=0; j<12; j++){
             if(blank){
-                sub7[addr] &= ~(*iptr++);
+            	aryptr[addr] &= ~(*iptr++);
             }else{
-                sub7[addr] |= *iptr++;
+            	aryptr[addr] |= *iptr++;
             }
             addr += DROW;
         }
@@ -402,9 +402,9 @@ void wr_sseg(U8 seg, U8 blank, U16 daddr){
     case 2:
         for(j=0; j<2; j++){
             if(blank){
-                sub7[addr] &= ~(*iptr++);
+            	aryptr[addr] &= ~(*iptr++);
             }else{
-                sub7[addr] |= *iptr++;
+            	aryptr[addr] |= *iptr++;
             }
             addr += DROW;
         }
@@ -1547,6 +1547,28 @@ void sg_mbcd(U8 bcdd, U16 digitaddr){
 	wr_mdigit('8', 1, digitaddr);
 	for(i=0x80; i!=0; i>>=1){
 		wr_mseg(bcdd & i, 0, digitaddr);
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// sg_sbcd() set/clr bcd segments - sub
+//	bcdd = bcd data [efdg a-cb]
+//	Loop through set bits and clear not set bits
+//-----------------------------------------------------------------------------
+void sg_sbcd(U8 bcdd, U16 digitaddr, U8 main_sel){
+	U8	i;
+
+	if(main_sel){
+		wr_sdigit('8', 1, digitaddr, main7);
+		for(i=0x80; i!=0; i>>=1){
+			wr_sseg(bcdd & i, 0, digitaddr, main7);
+		}
+	}else{
+		wr_sdigit('8', 1, digitaddr, sub7);
+		for(i=0x80; i!=0; i>>=1){
+			wr_sseg(bcdd & i, 0, digitaddr, sub7);
+		}
 	}
 	return;
 }

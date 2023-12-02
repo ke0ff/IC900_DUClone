@@ -372,6 +372,12 @@ void loop(void)
 {
 	U8	i;
 	U8	j;
+	U8	digit_seg[] = { CSEGA|CSEGB|CSEGC|CSEGD|CSEGE|CSEGF,
+						CSEGB|CSEGC, CSEGA|CSEGB|CSEGE|CSEGD|CSEGG, CSEGA|CSEGB|CSEGC|CSEGD|CSEGG,
+						CSEGF|CSEGB|CSEGC|CSEGG, CSEGA|CSEGF|CSEGC|CSEGD|CSEGG, CSEGA|CSEGC|CSEGD|CSEGE|CSEGF|CSEGG,
+						CSEGA|CSEGB|CSEGC, CSEGA|CSEGB|CSEGC|CSEGD|CSEGE|CSEGF|CSEGG, CSEGA|CSEGB|CSEGC|CSEGF|CSEGG,
+						0
+	};
 
 	setup();
 /*	dispFill();
@@ -379,13 +385,14 @@ void loop(void)
 	dispClear();
 	wait(500); //delay(200);*/
 
+	dispClear();
 	clear_main7();
 //	wr_mdigit('1', 0, MDADDR0);
 //	wr_mdigit('2', 0, MDADDR1);
 	sg_mbcd(CSEGB|CSEGC, MDADDR0);
 	sg_mbcd(CSEGA|CSEGB|CSEGG|CSEGE|CSEGD, MDADDR1);
-	sg_mbcd(CSEGP, MDADDR3);
-	sg_mbcd(CSEGP, MDADDR6);
+//	sg_mbcd(CSEGP, MDADDR3);
+//	sg_mbcd(CSEGP, MDADDR6);
 
 	wr_mdigit('9', 0, MDADDR2);
 	wr_mdigit('2', 0, MDADDR3);
@@ -395,6 +402,9 @@ void loop(void)
 	wr_mdigit('0', 0, MDADDR5);
 	wr_mdigit('0', 0, MDADDR6);
 	wr_mdigit('S', 0, MDADDR7);
+
+	wr_mseg(CSEGP, 0, MDADDR3);
+	wr_mseg(CSEGP, 0, MDADDR6);
 
 	clear_sub7();
 	wr_sdigit(' ', 0, SDADDR0, sub7);
@@ -407,9 +417,13 @@ void loop(void)
 	wr_sdigit('7', 0, SDADDR5, sub7);
 	wr_sdigit('5', 0, SDADDR6, sub7);
 	wr_sdigit('S', 0, SDADDR7, sub7);
-	wr_sseg(SEGDP, 0, SDADDR3);
-	wr_sdigit('8', 0, MEMMCH_ADDR, main7);
-	wr_sdigit('8', 0, MEMSCH_ADDR, sub7);
+	wr_sseg(CSEGP, 0, SDADDR3, sub7);
+
+	sg_sbcd(digit_seg[0], MEMMCH_ADDR, 1);
+	sg_sbcd(digit_seg[0], MEMSCH_ADDR, 0);
+
+//	wr_sdigit('8', 0, MEMMCH_ADDR, main7);
+//	wr_sdigit('8', 0, MEMSCH_ADDR, sub7);
 
 /*	// sub cluster
 	sub7[MINSSYM_ADDR] = gdash;
@@ -532,6 +546,10 @@ void loop(void)
 		sg_op2m(i);
 		sg_op2s(i);
 		sg_op2(i);
+
+		sg_sbcd(digit_seg[j>>1], MEMMCH_ADDR, 1);
+		sg_sbcd(digit_seg[j>>1], MEMSCH_ADDR, 0);
+
 		dispImage(main7);
 		dispImageS(sub7);
 		dispMsmet(mainsm);

@@ -307,7 +307,7 @@ extern	U8	optrow[];		// opt row
 void clear_main7(void);
 void clear_sub7(void);
 void wr_mseg(U8 seg, U8 blank, U16 daddr);
-void wr_sseg(U8 seg, U8 blank, U16 daddr);
+void wr_sseg(U8 seg, U8 blank, U16 daddr, U8* aryptr);
 void wr_mdigit(char digit, U8 blank, U16 daddr);
 void wr_sdigit(char digit, U8 blank, U16 daddr, U8* aryptr);
 
@@ -371,6 +371,7 @@ void sg_op2s(U8 son);
 void sg_op2(U8 son);
 
 void sg_mbcd(U8 bcdd, U16 digitaddr);
+void sg_sbcd(U8 bcdd, U16 digitaddr, U8 main_sel);
 
 //void wr_ssym(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr);
 //void wr_ssym2(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr);
