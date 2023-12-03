@@ -63,73 +63,73 @@ U8	CS2_bmem[LCD_MEMLEN];	// blink mem
 //		memory bit (0x4, 0x2, or 0x1 masks).  The function parameter is segment "ON" = 1 or "OFF" = 0
 
 void (*cs1_fn[32][3])(U8) = {
-		{ sg_op2s , sg_op2 , sg_op2m },
-		{ sg_bcd_mem_m7b , sg_bcd_mem_m7c , null_fn },
-		{ sg_bcd_mem_m7a , sg_bcd_mem_m7g , sg_bcd_mem_m7d },
-		{ sg_bcd_mem_m7f , sg_bcd_mem_m7e , null_fn },
-		{ sg_mdup , sg_mmin , sg_mskp },
-		{ sg_mtne , sg_mmem , null_fn },
-		{ null_fn , null_fn , sg_mm6 },
-		{ sg_mm3 , sg_mm4 , sg_mm5 },
-		{ sg_mm0 , sg_mm1 , sg_mm2 },
-		{ null_fn , sg_m00 , null_fn },
-		{ sg_bcd_m0b , null_fn , null_fn },
-		{ sg_bcd_m0a , sg_bcd_m0g , sg_bcd_m0d },
-		{ sg_bcd_m0f , sg_bcd_m0e , null_fn },
-		{ sg_bcd_m1b , sg_bcd_m1c , null_fn },
-		{ sg_bcd_m1a , sg_bcd_m1g , sg_bcd_m1d },
-		{ sg_bcd_m1f , sg_bcd_m1e , null_fn },
-		{ sg_bcd_m2b , sg_bcd_m2c , null_fn },
-		{ sg_bcd_m2a , sg_bcd_m2g , sg_bcd_m2d },
-		{ sg_bcd_m2f , sg_bcd_m2e , null_fn },
-		{ sg_bcd_m3b , sg_bcd_m3c , null_fn },
-		{ sg_bcd_m3a , sg_bcd_m3g , sg_bcd_m3d },
-		{ sg_bcd_m3f , sg_bcd_m3e , null_fn },
-		{ sg_bcd_m4b , sg_bcd_m4c , null_fn },
-		{ sg_bcd_m4a , sg_bcd_m4g , sg_bcd_m4d },
-		{ sg_bcd_m4f , sg_bcd_m4e , null_fn },
-		{ sg_bcd_m5b , sg_bcd_m5c , null_fn },
-		{ sg_bcd_m5a , sg_bcd_m5g , sg_bcd_m5d },
-		{ sg_bcd_m5f , sg_bcd_m5e , null_fn },
-		{ sg_bcd_m6bc , sg_mdp2 , sg_mdp },
-		{ sg_ow , sg_low , null_fn },
-		{ sg_tss , sg_tsq , sg_mss },
-		{ sg_rit , sg_vxo , sg_ts }
+		{ sg_op2s , sg_op2 , sg_op2m },							// 0x00
+		{ sg_bcd_mem_m7b , sg_bcd_mem_m7c , null_fn },			// 0x01
+		{ sg_bcd_mem_m7a , sg_bcd_mem_m7g , sg_bcd_mem_m7d },	// 0x02
+		{ sg_bcd_mem_m7f , sg_bcd_mem_m7e , null_fn },			// 0x03
+		{ sg_mdup , sg_mmin , sg_mskp },						// 0x04
+		{ sg_mtne , sg_mmem , null_fn },						// 0x05
+		{ null_fn , null_fn , sg_mm6 },							// 0x06
+		{ sg_mm3 , sg_mm4 , sg_mm5 },							// 0x07
+		{ sg_mm0 , sg_mm1 , sg_mm2 },							// 0x08
+		{ null_fn , sg_m00 , null_fn },							// 0x09
+		{ sg_bcd_m0b , sg_bcd_m0c , null_fn },					// 0x0A
+		{ sg_bcd_m0a , sg_bcd_m0g , sg_bcd_m0d },				// 0x0B
+		{ sg_bcd_m0f , sg_bcd_m0e , null_fn },					// 0x0C
+		{ sg_bcd_m1b , sg_bcd_m1c , null_fn },					// 0x0D
+		{ sg_bcd_m1a , sg_bcd_m1g , sg_bcd_m1d },				// 0x0E
+		{ sg_bcd_m1f , sg_bcd_m1e , null_fn },					// 0x0F
+		{ sg_bcd_m2b , sg_bcd_m2c , null_fn },					// 0x10
+		{ sg_bcd_m2a , sg_bcd_m2g , sg_bcd_m2d },				// 0x11
+		{ sg_bcd_m2f , sg_bcd_m2e , null_fn },					// 0x12
+		{ sg_bcd_m3b , sg_bcd_m3c , null_fn },					// 0x13
+		{ sg_bcd_m3a , sg_bcd_m3g , sg_bcd_m3d },				// 0x14
+		{ sg_bcd_m3f , sg_bcd_m3e , null_fn },					// 0x15
+		{ sg_bcd_m4b , sg_bcd_m4c , null_fn },					// 0x16
+		{ sg_bcd_m4a , sg_bcd_m4g , sg_bcd_m4d },				// 0x17
+		{ sg_bcd_m4f , sg_bcd_m4e , null_fn },					// 0x18
+		{ sg_bcd_m5b , sg_bcd_m5c , null_fn },					// 0x19
+		{ sg_bcd_m5a , sg_bcd_m5g , sg_bcd_m5d },				// 0x1A
+		{ sg_bcd_m5f , sg_bcd_m5e , null_fn },					// 0x1B
+		{ sg_bcd_m6bc , sg_mdp2 , sg_mdp },						// 0x1C
+		{ sg_ow , sg_low , null_fn },							// 0x1D
+		{ sg_tss , sg_tsq , sg_mss },							// 0x1E
+		{ sg_rit , sg_vxo , sg_ts }								// 0x1F
 };
 
 void (*cs2_fn[32][3])(U8) = {
-		{ sg_op1s , sg_op1 , sg_op1m },
-		{ sg_dsm , sg_dsq , sg_dss },
-		{ sg_bcd_mem_s7b , sg_bcd_mem_s7c , null_fn },
-		{ sg_bcd_mem_s7a , sg_bcd_mem_s7g , sg_bcd_mem_s7d },
-		{ sg_bcd_mem_s7f , sg_bcd_mem_s7e , null_fn },
-		{ sg_sdup , sg_smin , sg_sskp },
-		{ sg_stne , sg_smem , null_fn },
-		{ null_fn , sg_s00 , null_fn },
-		{ sg_bcd_s0b , sg_bcd_s0c , null_fn },
-		{ sg_bcd_s0a , sg_bcd_s0g , sg_bcd_s0d },
-		{ sg_bcd_s0f , sg_bcd_s0e , null_fn },
-		{ sg_bcd_s1b , sg_bcd_s1c , null_fn },
-		{ sg_bcd_s1a , sg_bcd_s1g , sg_bcd_s1d },
-		{ sg_bcd_s1f , sg_bcd_s1e , null_fn },
-		{ sg_bcd_s2b , sg_bcd_s2c , null_fn },
-		{ sg_bcd_s2a , sg_bcd_s2g , sg_bcd_s2d },
-		{ sg_bcd_s2f , sg_bcd_s2e , null_fn },
-		{ sg_bcd_s3b , sg_bcd_s3c , null_fn },
-		{ sg_bcd_s3a , sg_bcd_s3g , sg_bcd_s3d },
-		{ sg_bcd_s3f , sg_bcd_s3e , null_fn },
-		{ sg_bcd_s4b , sg_bcd_s4c , null_fn },
-		{ sg_bcd_s4a , sg_bcd_s4g , sg_bcd_s4d },
-		{ sg_bcd_s4f , sg_bcd_s4e , null_fn },
-		{ sg_bcd_s5b , sg_bcd_s5c , null_fn },
-		{ sg_bcd_s5a , sg_bcd_s5g , sg_bcd_s5d },
-		{ sg_bcd_s5f , sg_bcd_s5e , sg_bcd_s6bc },
-		{ sg_sdp2 , sg_sdp , null_fn },
-		{ null_fn , sg_sm6 , sg_sm3 },
-		{ sg_sm4 , sg_sm5 , sg_sm0 },
-		{ sg_sm1 , sg_sm2 , sg_sub },
-		{ sg_lck , null_fn , sg_prg },
-		{ sg_mhz , sg_bnd , sg_ts }
+		{ sg_op1s , sg_op1 , sg_op1m },							// 0x00
+		{ sg_dsm , sg_dsq , sg_dss },							// 0x01
+		{ sg_bcd_mem_s7b , sg_bcd_mem_s7c , null_fn },			// 0x02
+		{ sg_bcd_mem_s7a , sg_bcd_mem_s7g , sg_bcd_mem_s7d },	// 0x03
+		{ sg_bcd_mem_s7f , sg_bcd_mem_s7e , null_fn },			// 0x04
+		{ sg_sdup , sg_smin , sg_sskp },						// 0x05
+		{ sg_stne , sg_smem , null_fn },						// 0x06
+		{ null_fn , sg_s00 , null_fn },							// 0x07
+		{ sg_bcd_s0b , sg_bcd_s0c , null_fn },					// 0x08
+		{ sg_bcd_s0a , sg_bcd_s0g , sg_bcd_s0d },				// 0x09
+		{ sg_bcd_s0f , sg_bcd_s0e , null_fn },					// 0x0A
+		{ sg_bcd_s1b , sg_bcd_s1c , null_fn },					// 0x0B
+		{ sg_bcd_s1a , sg_bcd_s1g , sg_bcd_s1d },				// 0x0C
+		{ sg_bcd_s1f , sg_bcd_s1e , null_fn },					// 0x0D
+		{ sg_bcd_s2b , sg_bcd_s2c , null_fn },					// 0x0E
+		{ sg_bcd_s2a , sg_bcd_s2g , sg_bcd_s2d },				// 0x0F
+		{ sg_bcd_s2f , sg_bcd_s2e , null_fn },					// 0x10
+		{ sg_bcd_s3b , sg_bcd_s3c , null_fn },					// 0x11
+		{ sg_bcd_s3a , sg_bcd_s3g , sg_bcd_s3d },				// 0x12
+		{ sg_bcd_s3f , sg_bcd_s3e , null_fn },					// 0x13
+		{ sg_bcd_s4b , sg_bcd_s4c , null_fn },					// 0x14
+		{ sg_bcd_s4a , sg_bcd_s4g , sg_bcd_s4d },				// 0x15
+		{ sg_bcd_s4f , sg_bcd_s4e , null_fn },					// 0x16
+		{ sg_bcd_s5b , sg_bcd_s5c , null_fn },					// 0x17
+		{ sg_bcd_s5a , sg_bcd_s5g , sg_bcd_s5d },				// 0x18
+		{ sg_bcd_s5f , sg_bcd_s5e , null_fn },					// 0x19
+		{ sg_bcd_s6bc , sg_sdp2 , sg_sdp },						// 0x1A
+		{ null_fn , null_fn , sg_sm6 },							// 0x1B
+		{ sg_sm3 , sg_sm4 , sg_sm5 },							// 0x1C
+		{ sg_sm0 , sg_sm1 , sg_sm2 },							// 0x1D
+		{ sg_sub , sg_lck , null_fn },							// 0x1E
+		{ sg_prg , sg_mhz , sg_bnd }							// 0x1F
 };
 
 //	(*fun_ptr_arr[ch])(a, b);
@@ -144,8 +144,13 @@ void (*cs2_fn[32][3])(U8) = {
 
 
 //-----------------------------------------------------------------------------
-// clear_main7() clears LCD memory - main
-// clear_sub7() clears LCD memory - sub
+// Clear pixel mem arrays
+// clear_main7() - main
+// clear_sub7() - sub
+// clear_optrow() - sub
+// clear_mainsm() - main sm
+// clear_subsm() - subsm
+// clear_all() - all of the above
 //-----------------------------------------------------------------------------
 void clear_main7(void){
 	U16	ii;
@@ -165,6 +170,51 @@ void clear_sub7(void){
 	return;
 }
 
+void clear_optrow(void){
+	U16	ii;
+
+	for(ii=0; ii<OPTROW_LEN; ii++){
+		optrow[ii] = 0;
+	}
+	return;
+}
+
+void clear_mainsm(void){
+	U16	ii;
+
+	for(ii=0; ii<MAINSM_LEN; ii++){
+		mainsm[ii] = 0;
+	}
+	return;
+}
+
+void clear_subsm(void){
+	U16	ii;
+
+	for(ii=0; ii<SUBSM_LEN; ii++){
+		subsm[ii] = 0;
+	}
+	return;
+}
+
+void clear_all(void){
+	U8	i;
+
+	clear_main7();
+	clear_sub7();
+	clear_optrow();
+	clear_mainsm();
+	clear_subsm();
+	for(i=0; i<LCD_MEMLEN; i++){
+		CS1_trig[i] = 0;
+		CS1_dmem[i] = 0;
+		CS1_bmem[i] = 0;
+		CS2_trig[i] = 0;
+		CS2_dmem[i] = 0;
+		CS2_bmem[i] = 0;
+	}
+	return;
+}
 ///////////////////////////////////////////////////////////////////////////////
 // drivers
 
@@ -557,7 +607,7 @@ void wr_mdigit(char digit, U8 blank, U16 daddr){
         i = 0xff;
         break;
     }
-    if(i){
+    if(i && (i !=0xff)){
         // blank digit
        iptr = *digit8;
        for(j=0; j<NUMROWS_M; j++){
@@ -579,7 +629,7 @@ void wr_mdigit(char digit, U8 blank, U16 daddr){
                 addr += NUMROWS_MS * DROW;
                 for(j=0; j<DIGITMS_Y; j++){
                     for(i=0; i<MSDWIDE; i++){
-                        if(blank) main7[addr+i] &= ~(*iptr++);
+                        if(blank) main7[addr+i] &= ~(*(iptr+i));
                         else main7[addr+i] = *(iptr+i);
                     }
                     iptr = (iptr + MSDWIDE);
@@ -588,7 +638,7 @@ void wr_mdigit(char digit, U8 blank, U16 daddr){
             }else{
                 for(j=0; j<NUMROWS_M; j++){
                     for(i=0; i<MDWIDE; i++){
-                        if(blank) main7[addr+i] &= ~(*iptr++);
+                        if(blank) main7[addr+i] &= ~(*(iptr+i));
                         else main7[addr+i] = *(iptr+i);
                     }
                     iptr = (iptr + MDWIDE);
@@ -1643,11 +1693,11 @@ void sg_mdp2(U8 son){
 
 	switch(son){
 	case SEGOR:
-		wr_mseg(CSEGP, 0, MDADDR6);
+		wr_mseg(CSEGP, 0, MDADDR0);
 		break;
 
 	case SEGNOT:
-		wr_mseg(CSEGP, 1, MDADDR6);
+		wr_mseg(CSEGP, 1, MDADDR0);
 		break;
 
 	default:
@@ -1683,11 +1733,11 @@ void sg_sdp2(U8 son){
 
 	switch(son){
 	case SEGOR:
-		wr_sseg(CSEGP, 0, SDADDR6, sub7);
+		wr_sseg(CSEGP, 0, SDADDR0, sub7);
 		break;
 
 	case SEGNOT:
-		wr_sseg(CSEGP, 1, SDADDR6, sub7);
+		wr_sseg(CSEGP, 1, SDADDR0, sub7);
 		break;
 
 	default:
@@ -3909,11 +3959,13 @@ void sg_bcd_mem_m7a(U8 son){
 
 	switch(son){
 	case SEGOR:
-		sg_mbcd(CSEGA, MEMMCH_ADDR, 0, 0);
+		sg_sbcd(CSEGA, MEMSCH_ADDR, 0, 1);
+//		sg_mbcd(CSEGA, MEMMCH_ADDR, 0, 0);
 		break;
 
 	case SEGNOT:
-		sg_mbcd(CSEGA, MEMMCH_ADDR, 1, 0);
+		sg_sbcd(CSEGA, MEMSCH_ADDR, 1, 1);
+//		sg_mbcd(CSEGA, MEMMCH_ADDR, 1, 0);
 		break;
 
 	default:
@@ -3929,11 +3981,11 @@ void sg_bcd_mem_m7b(U8 son){
 
 	switch(son){
 	case SEGOR:
-		sg_mbcd(CSEGB, MEMMCH_ADDR, 0, 0);
+		sg_sbcd(CSEGB, MEMSCH_ADDR, 0, 1);
 		break;
 
 	case SEGNOT:
-		sg_mbcd(CSEGB, MEMMCH_ADDR, 1, 0);
+		sg_sbcd(CSEGB, MEMSCH_ADDR, 1, 1);
 		break;
 
 	default:
@@ -3949,11 +4001,11 @@ void sg_bcd_mem_m7c(U8 son){
 
 	switch(son){
 	case SEGOR:
-		sg_mbcd(CSEGC, MEMMCH_ADDR, 0, 0);
+		sg_sbcd(CSEGC, MEMSCH_ADDR, 0, 1);
 		break;
 
 	case SEGNOT:
-		sg_mbcd(CSEGC, MEMMCH_ADDR, 1, 0);
+		sg_sbcd(CSEGC, MEMSCH_ADDR, 1, 1);
 		break;
 
 	default:
@@ -3969,11 +4021,11 @@ void sg_bcd_mem_m7d(U8 son){
 
 	switch(son){
 	case SEGOR:
-		sg_mbcd(CSEGD, MEMMCH_ADDR, 0, 0);
+		sg_sbcd(CSEGD, MEMSCH_ADDR, 0, 1);
 		break;
 
 	case SEGNOT:
-		sg_mbcd(CSEGD, MEMMCH_ADDR, 1, 0);
+		sg_sbcd(CSEGD, MEMSCH_ADDR, 1, 1);
 		break;
 
 	default:
@@ -3989,11 +4041,11 @@ void sg_bcd_mem_m7e(U8 son){
 
 	switch(son){
 	case SEGOR:
-		sg_mbcd(CSEGE, MEMMCH_ADDR, 0, 0);
+		sg_sbcd(CSEGE, MEMSCH_ADDR, 0, 1);
 		break;
 
 	case SEGNOT:
-		sg_mbcd(CSEGE, MEMMCH_ADDR, 1, 0);
+		sg_sbcd(CSEGE, MEMSCH_ADDR, 1, 1);
 		break;
 
 	default:
@@ -4009,11 +4061,11 @@ void sg_bcd_mem_m7f(U8 son){
 
 	switch(son){
 	case SEGOR:
-		sg_mbcd(CSEGF, MEMMCH_ADDR, 0, 0);
+		sg_sbcd(CSEGF, MEMSCH_ADDR, 0, 1);
 		break;
 
 	case SEGNOT:
-		sg_mbcd(CSEGF, MEMMCH_ADDR, 1, 0);
+		sg_sbcd(CSEGF, MEMSCH_ADDR, 1, 1);
 		break;
 
 	default:
@@ -4029,11 +4081,11 @@ void sg_bcd_mem_m7g(U8 son){
 
 	switch(son){
 	case SEGOR:
-		sg_mbcd(CSEGG, MEMMCH_ADDR, 0, 0);
+		sg_sbcd(CSEGG, MEMSCH_ADDR, 0, 1);
 		break;
 
 	case SEGNOT:
-		sg_mbcd(CSEGG, MEMMCH_ADDR, 1, 0);
+		sg_sbcd(CSEGG, MEMSCH_ADDR, 1, 1);
 		break;
 
 	default:
@@ -4041,3 +4093,138 @@ void sg_bcd_mem_m7g(U8 son){
 	}
 	return;
 }
+
+//-----------------------------------------------------------------------------
+// disp_fn() set/clr bcd seg using function array (debug??)
+//-----------------------------------------------------------------------------
+void disp_fn(U8 csnum, U8 son, U8 maddr, U8 saddr){
+
+	if(csnum == 1){
+		(*cs1_fn[maddr][saddr])(son);
+	}else{
+		(*cs2_fn[maddr][saddr])(son);
+	}
+}
+
+//-----------------------------------------------------------------------------
+// trig_fill() place test date into trig array
+//-----------------------------------------------------------------------------
+void trig_fill(U8 idx, U8 data, U8 chsel){
+
+	if(chsel == 1){
+		CS1_trig[idx] = data;
+	}else{
+		CS2_trig[idx] = data;
+	}
+	return;
+}
+
+// uPD7225 memory arrays
+// segment change memory array
+//U8	CS1_trig[LCD_MEMLEN];	// trigger
+// segment on/off memory array
+//U8	CS1_dmem[LCD_MEMLEN];	// display mem
+// blink on/off memory array
+//U8	CS1_bmem[LCD_MEMLEN];	// blink mem
+
+//-----------------------------------------------------------------------------
+// trig_scan() scans through trig arrays and dispatches segment updates
+//	copies new pixel status into dmem or bmem arrays
+//	clears trig array as processed
+//	mode is OR, AND, or write
+//-----------------------------------------------------------------------------
+void trig_scan1(U8 mode){
+	U8	i;
+	U8	j;
+	U8	k;
+	U8	m;
+	U8*	memptr;
+
+	for(i=0; i<LCD_MEMLEN; i++){
+		m = CS1_trig[i];
+		if(m){
+			if(m & BLINKFL){
+				memptr = CS1_bmem;
+			}else{
+				memptr = CS1_dmem;
+			}
+			k = memptr[i];
+			switch(m & MODE_MASK){
+			case MODE_OR:
+				k |= (m & BIT_MASK);
+				break;
+
+			case MODE_AND:
+				k &= (m & BIT_MASK);
+				break;
+
+			case MODE_WR:
+				k = (m & BIT_MASK);
+				break;
+
+			default:
+				// abort
+				m = 0xff;
+				break;
+			}
+			if(m != 0xff){
+				memptr[i] = k;
+				if(!(m & BLINKFL)){
+					for(j=0; j<3; j++){
+						(*cs1_fn[i][j])(k & 0x01);
+						k >>= 1;
+					}
+				}
+			}
+		}
+	}
+}
+
+void trig_scan2(U8 mode){
+	U8	i;
+	U8	j;
+	U8	k;
+	U8	m;
+	U8*	memptr;
+
+	for(i=0; i<LCD_MEMLEN; i++){
+		m = CS2_trig[i];
+		if(m){
+			if(m & BLINKFL){
+				memptr = CS2_bmem;
+			}else{
+				memptr = CS2_dmem;
+			}
+			k = memptr[i];
+			switch(m & MODE_MASK){
+			case MODE_OR:
+				k |= (m & BIT_MASK);
+				break;
+
+			case MODE_AND:
+				k &= (m & BIT_MASK);
+				break;
+
+			case MODE_WR:
+				k = (m & BIT_MASK);
+				break;
+
+			default:
+				// abort
+				m = 0xff;
+				break;
+			}
+			if(m != 0xff){
+				memptr[i] = k;
+				if(!(m & BLINKFL)){
+					for(j=0; j<3; j++){
+						(*cs2_fn[i][j])(k & 0x01);
+						k >>= 1;
+					}
+				}
+			}
+		}
+	}
+}
+
+// EOF

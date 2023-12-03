@@ -386,7 +386,38 @@ void loop(void)
 	wait(500); //delay(200);*/
 
 	dispClear();
-	clear_main7();
+	clear_all();
+	dispImage(main7);
+	dispImageS(sub7);
+	dispMsmet(mainsm);
+	dispSsmet(subsm);
+	dispOptrow(optrow);
+
+	for(i=0; i<32; i++){
+		for(j=0; j<3; j++){
+			trig_fill(i, MODE_OR | (1<<j), 1);
+			trig_scan1(MODE_OR);
+			dispImage(main7);
+			dispImageS(sub7);
+			dispMsmet(mainsm);
+			dispSsmet(subsm);
+			dispOptrow(optrow);
+			wait(200);
+		}
+	}
+	for(i=0; i<32; i++){
+		for(j=0; j<3; j++){
+			trig_fill(i, MODE_OR | (1<<j), 2);
+			trig_scan2(MODE_OR);
+			dispImage(main7);
+			dispImageS(sub7);
+			dispMsmet(mainsm);
+			dispSsmet(subsm);
+			dispOptrow(optrow);
+			wait(200);
+		}
+	}
+	/*
 //	wr_mdigit('1', 0, MDADDR0);
 //	wr_mdigit('2', 0, MDADDR1);
 	sg_mbcd(CSEGB|CSEGC, MDADDR0, 0, 1);
@@ -403,8 +434,9 @@ void loop(void)
 	wr_mdigit('0', 0, MDADDR6);
 	wr_mdigit('S', 0, MDADDRS);
 
-	wr_mseg(CSEGP, 0, MDADDR3);
-	wr_mseg(CSEGP, 0, MDADDR0);
+	sg_mdp(1);
+//	wr_mseg(CSEGP, 0, MDADDR3);
+//	wr_mseg(CSEGP, 0, MDADDR0);
 
 	clear_sub7();
 	wr_sdigit(' ', 0, SDADDR0, sub7);
@@ -417,7 +449,9 @@ void loop(void)
 	wr_sdigit('7', 0, SDADDR5, sub7);
 	wr_sdigit('5', 0, SDADDR6, sub7);
 	wr_sdigit('S', 0, SDADDRS, sub7);
-	wr_sseg(CSEGP, 0, SDADDR3, sub7);
+//	wr_sseg(CSEGP, 0, SDADDR3, sub7);
+	disp_fn(2, 1, 0x1a, 0);
+//	sg_sdp2(1);
 
 	sg_sbcd(digit_seg[8], MEMMCH_ADDR, 1, 1);
 	sg_sbcd(digit_seg[0], MEMMCH_ADDR, 0, 1);
@@ -426,7 +460,7 @@ void loop(void)
 
 //	wr_sdigit('8', 0, MEMMCH_ADDR, main7);
 //	wr_sdigit('8', 0, MEMSCH_ADDR, sub7);
-
+*/
 /*	// sub cluster
 	sub7[MINSSYM_ADDR] = gdash;
 	wr_msym2(*gmem, MEMSYM_X, MEMSYM_Y, 0, MEMSSYM_ADDR, sub7);
@@ -499,7 +533,7 @@ void loop(void)
 	wr_ssym2(*gsmet5, SM5SYM_X, SM5SYM_Y, 0, SSMET5_ADDR);
 	wr_ssym2(*gsmet6, SM6SYM_X, SM6SYM_Y, 0, SSMET6_ADDR);
 	wr_ssym2(*gsmet7, SM7SYM_X, SM7SYM_Y, 0, SSMET7_ADDR);*/
-
+/*
 	for(j=0; j<20; j++){
 		i = j&1;
 		sg_mmin(i);
@@ -561,7 +595,7 @@ void loop(void)
 		dispOptrow(optrow);
 		wait(200);
 	}
-
+*/
 /*	wait(200);
 	wr_mseg(SEGB, 1, MDADDR0);
 	dispImage(main7);

@@ -60,7 +60,6 @@
 #define	SDADDR0		(SDADDR1+SDWIDE)
 #define	SDADDRS		(SDADDR0+SDWIDE)
 
-
 #define	OW_ADDR		(0)
 #define	LOW_ADDR	(OW_ADDR+OWSYM_X-1)
 
@@ -120,7 +119,7 @@
 #define	MINSSYM_ADDR		((DUPSSYM_ADDR-1)+((DROW*4)))
 #define	MEMSSYM_ADDR		(TONSSYM_ADDR+2+(DROW*14))
 #define	SKPSSYM_ADDR		(MEMSSYM_ADDR+(DROW*13))
-#define	MEMSCH_ADDR			(DUPSSYM_ADDR+(DROW*13))
+#define	MEMSCH_ADDR			(DUPSSYM_ADDR+(DROW*11))
 
 #define	PROG_ADDR	0
 #define	BAND_ADDR	(PROG_ADDR+PROGSYM_X-1)
@@ -168,8 +167,13 @@ extern	U8	optrow[];		// opt row
 #define	MEMD0		0x01			// segment bitfields
 #define	MEMD1		0x02			// [2:0] correspond to uPD7225 mem bits
 #define	MEMD2		0x04
-#define	MEM_MODE0	0x10			// (trig) mem mode, 1=seg off, 2=OR, 3=AND, 4=WR
-#define	MEM_MODE1	0x20
+#define	BIT_MASK	(MEMD0|MEMD1|MEMD2)
+#define	MEM_MODE0	0x20			// (trig) mem mode, 0x20==OR, 0x40==AND, 0x60==WR
+#define	MEM_MODE1	0x40
+#define	MODE_OR		0x20
+#define	MODE_AND	0x40
+#define	MODE_WR		0x60
+#define	MODE_MASK	0x60
 #define	BLINKFL		0x80			// (trig) blink data
 
 // chip status reg defines
@@ -306,6 +310,11 @@ extern	U8	optrow[];		// opt row
 //------------------------------------------------------------------------------
 void clear_main7(void);
 void clear_sub7(void);
+void clear_optrow(void);
+void clear_mainsm(void);
+void clear_subsm(void);
+void clear_all(void);
+
 void wr_mseg(U8 seg, U8 blank, U16 daddr);
 void wr_sseg(U8 seg, U8 blank, U16 daddr, U8* aryptr);
 void wr_mdigit(char digit, U8 blank, U16 daddr);
@@ -490,5 +499,10 @@ void sg_bcd_mem_s7d(U8 son);
 void sg_bcd_mem_s7e(U8 son);
 void sg_bcd_mem_s7f(U8 son);
 void sg_bcd_mem_s7g(U8 son);
+
+void trig_fill(U8 idx, U8 data, U8 chsel);
+void disp_fn(U8 csnum, U8 son, U8 maddr, U8 saddr);
+void trig_scan1(U8 mode);
+void trig_scan2(U8 mode);
 
 //eof
