@@ -28,7 +28,7 @@
 #include "tiva_init.h"
 #include "spi.h"
 #include "lcd_db.h"
-#include "lcd_test.h"
+//#include "lcd_test.h"
 
 //===================================================================================================
 // Command token syntax defines and instantiations.
@@ -525,8 +525,49 @@ volatile	char	pr = FALSE;				// R flag (set if <wsp>-R<wsp> found in args)
 					break;
 
 				case lcd_tst:													// debug, LCD test
-					lcd_test();
-					putsQ("LCD test.");
+//					lcd_test();
+					if(pr || pv){
+						if(pr){
+							disp_err(1);
+							putsQ("LCD err1");
+						}
+						if(pv){
+							disp_err(2);
+							putsQ("LCD err2");
+						}
+					}else{
+						params[0] = 0xffff;
+						params[1] = 0xffff;
+						params[2] = 0;
+						get_Dargs(1, nargs, args, params);						// parse param numerics into params[] array
+						i = 1;
+						if(params[0]>31){
+							params[0] -= 32;
+							i = 2;
+						}
+						switch(params[2]){
+						case 1:
+							j = MODE_OR;
+							break;
+
+						case 2:
+							j = MODE_AND;
+							break;
+
+						default:
+							j = MODE_WR;
+						}
+						trig_fill((U8)params[0], j | (U8)params[1], i);							// 1
+
+						trig_scan1(MODE_OR);
+						trig_scan2(MODE_OR);
+						wrlcd_str(main7, MAIN7_LEN, MAIN7_OFFS);
+						wrlcd_str(sub7, SUB7_LEN, SUB7_OFFS);
+						wrlcd_str(mainsm, MAINSM_LEN, MAINSM_OFFS);
+						wrlcd_str(optrow, OPTROW_LEN, OPTROW_OFFS);
+						wrlcd_str(subsm, SUBSM_LEN, SUBSM_OFFS);
+						putsQ("LCD test.");
+					}
 					break;
 
 				case nvrd:
@@ -619,6 +660,12 @@ char do_cmd_help(U8 cmd_id){
 			putsQ("\t-W does a write, else op is a read");
 			putsQ("\tdisplays result to serial term");
 			break;
+
+		case lcd_tst:
+			putsQ("lt <addr 0-63> ; <data> ; <0/1/2> WR, OR, AND");
+			putsQ("\tconfigures segments");
+			break;
+
 /*
 //			code char fnkey_code[] = { 'p',   'o',   'n',   'k',   'm',   'l',   'j',  '|',
 //								  '!',   'a',   'b',   'c',   'q',   'd',   'e',   'f',

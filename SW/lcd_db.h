@@ -30,8 +30,17 @@
 #define	SUBSM_LEN	(12*30)
 #define	SUBSM_OFFS	(OPTROW_OFFS+OPTROW_LEN)
 
-#define	SUB7_LEN	(45*30)
+#define	SUB7_LEN	(43*30)
 #define	SUB7_OFFS	(SUBSM_OFFS+SUBSM_LEN)
+
+#define	ERR_OFFS	(SUB7_OFFS+SUB7_LEN)
+#define	ERR2_OFFS	(ERR_OFFS + (6))
+
+#define	MAIN7_FL	0x80
+#define	SUB7_FL		0x40
+#define	MAINSM_FL	0x20
+#define	SUBSM_FL	0x10
+#define	OPTROW_FL	0x08
 
 // LCD digit addresses - Main
 #define	MDWIDE		3
@@ -308,12 +317,20 @@ extern	U8	optrow[];		// opt row
 //------------------------------------------------------------------------------
 // public Function Prototypes
 //------------------------------------------------------------------------------
+void process_LCD(U8 iplfl);
+void process_SPI(U8 iplfl);
+
+
 void clear_main7(void);
 void clear_sub7(void);
 void clear_optrow(void);
 void clear_mainsm(void);
 void clear_subsm(void);
 void clear_all(void);
+void lcdClear(void);
+void wrlcd_str(U8 *lcd_string, U16 strlen, U16 lcd_addr);
+void lcd_setup(void);
+void disp_err(U8 mnum);
 
 void wr_mseg(U8 seg, U8 blank, U16 daddr);
 void wr_sseg(U8 seg, U8 blank, U16 daddr, U8* aryptr);

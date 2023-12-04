@@ -14,6 +14,9 @@
  *  Project scope rev notes:
  *  !! The TI datasheet lies !! UART: configuring 2 stop bits requires 2 stop bits for RX also
  *
+ *  Pieces are comming together.  Got basic LCD ram->display mechanism working.  Starting to add SPI stuff.
+ *  Need to code LCD commands and work out the processing of the the SPI buffer.
+ *
  *
  *    Project scope rev History:
  *    11-21-23 jmh:  creation date
@@ -64,7 +67,7 @@
 #include "cmd_fn.h"
 #include "tiva_init.h"
 #include "eeprom.h"
-//#include "lcd.h"
+#include "lcd_db.h"
 //#include "radio.h"
 #include "uxpll.h"
 #include "spi.h"
@@ -120,30 +123,7 @@ U8		iplt2;							// timer2 ipl flag
 U8		btredir;						// bluetooth cmd re-direct flag
 U16		waittimer;						// gp wait timer
 U16		waittimer2;						// gp wait timer
-U8		dialtimer;						// dial debounce wait timer
-U8		sintimer;						// sin activity timer
-U8		souttimer;						// sout pacing timer
-U16		mhztimer;						// mhz digit access timer
-U16		qtimer;							// squ access timer
-U16		vtimer;							// vol access timer
-U16		offstimer;						// offs access timer
-U16		settimer;						// set access timer
-U16		subtimer;						// sub focus timer
-U8		beepgaptimer;					// beep gap timer
-U16		mictimer;						// mic button repeat timer
-U8		micdbtimer;						// mic button dbounce timer
-U8		mutetimer;						// vol mute timer
-U16		tstimer;						// TS adj mode timer
-U16		slidetimer;						// txt slide rate timer
-U16		scanmtimer;						// main scan timer
-U16		scanstimer;						// sub scan timer
-U16		hmktimer;						// sub scan timer
-U16		hm_shft_timer;					// MFmic function-shift timeout timer
-U16		dfe_timer;						// dfe timeout timer
 U16		ipl_timer;						// ipl timeout timer
-U16		cato_timer;						// cat timeout timer
-U8		cata_timer;						// cat activity timer
-U8		catz_timer;						// cat pacing timer
 U8		cmdtimer;						// cmd_ln GP timer
 
 U32		free_32;						// free-running ms timer
@@ -152,21 +132,6 @@ U8		idx;
 U16		ipl;							// initial power on state
 char	btbuf[100];						// temp buffer
 
-#define KBD_ERR 0x01
-#define KBD_BUFF_END 5
-U16		S4_stat;						// holds de-mux'd status of spare_S4 switch
-U16		kbd_buff[KBD_BUFF_END];			// keypad data buffer
-U8		kbd_hptr;						// keypad buf head ptr
-U8		kbd_tptr;						// keypad buf tail ptr
-U8		kbd_stat;						// keypad buff status
-U8		kbdn_flag;						// key down or hold
-U8		kbup_flag;						// key released
-U32		sys_error_flags;				// system error flags
-U8		debug_i;
-U8		ptt_mode;						// ptt update mode (process_io)
-//U8		led_2_on;						// led on regs (1/0)
-//U8		led_3_on;
-//U8		led_4_on;
 U8		led_5_on;
 U8		led_6_on;
 //U8		led_2_level;					// led level regs (0-100%)
@@ -180,10 +145,6 @@ U8		led_6_level;
 U16		pwm5_reg;
 U16		pwm6_reg;
 U8		pwm_master;						// led master level
-S8		main_dial;
-U16		beep_count;						// beep duration register
-U16		beep_counter;					// beep duration counter
-U8		num_beeps;						// number of beeps counter
 U8		sw_state;
 U8		sw_change;
 //char	dbbuf[30];	// debug buffer
@@ -237,25 +198,22 @@ int main(void){
 	got_cmd = FALSE;
 	offset = 0;
 	cur_baud = 0;
-//	iplt3 = 1;											// init timer3
     iplt2 = 1;											// init timer1
     ipl = proc_init();									// initialize the processor I/O
-    main_dial = 0;
-    init_spi3();
+ 	while(iplt2);										// wait for timer to finish intialization
+	dispSWvers(); 										// display reset banner
+	init_ssi0();
+	process_LCD(0xff);
     do{													// outer-loop (do forever, allows soft-restart)
         rebufN[0] = rebuf0;								// init CLI re-buf pointers
     	rebufN[1] = rebuf1;
     	rebufN[2] = rebuf2;
     	rebufN[3] = rebuf3;
-    	while(iplt2);									// wait for timer to finish intialization
-    	wait(200);										// else, pad a bit of delay for POR to settle..
-    	dispSWvers(); 									// display reset banner
-    	wait(10);										// a bit of delay..
     	rebuf0[0] = '\0';								// clear cmd re-do buffers
     	rebuf1[0] = '\0';
     	rebuf2[0] = '\0';
     	rebuf3[0] = '\0';
-    	bcmd_resp_init();								// init bcmd response buffer
+//    	bcmd_resp_init();								// init bcmd response buffer
     	wait(10);										// a bit more delay..
 //    	GPIO_PORTB_DATA_R &= ~PTT7K;					// set PTT7K in-active
 //    	GPIO_PORTD_DATA_R &= ~PTTb;						// set PTTb in-active
@@ -557,15 +515,14 @@ volatile	char	q = 0;
 //-----------------------------------------------------------------------------
 // process_IO() processes system I/O
 //-----------------------------------------------------------------------------
-char process_IO(U8 flag){
+void process_IO(U8 flag){
 
-	// process IPL init
-	if(flag == PROC_INIT){								// perform init/debug fns
-    	swcmd = 0;										// init SW command
-	}
 	// perform periodic process updates					// ! SOUT init must execute before SIN init !
 	process_CMD(flag);									// process CMD_FN state (primarily, the MFmic key-entry state machine)
-	return swcmd;
+//	process_LCD(flag);									// lcd updates and blink machine
+//	process_ERR(flag);									// error reporting
+//	process_SPI(flag);									// spi input processing
+	return;
 }
 
 //-----------------------------------------------------------------------------
@@ -909,16 +866,6 @@ U8 wait_reg1(volatile uint32_t *regptr, uint32_t setmask, U16 delay){
 U16 getipl(void){
 
 	return ipl;
-}
-
-//-----------------------------------------------------------------------------
-// get_syserr() returns current system error flags value
-//	if opr == true, clear flags
-//-----------------------------------------------------------------------------
-U32 get_syserr(U8 opr){
-
-	if(opr) sys_error_flags = 0;
-	return sys_error_flags;
 }
 
 //-----------------------------------------------------------------------------

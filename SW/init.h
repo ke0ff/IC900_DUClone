@@ -152,15 +152,15 @@
 // Port A defines
 #define RXD0			0x01		// in		uart0
 #define TXD0			0x02		// in		uart0
-#define SPCK			0x04		// in		IC900 LCD SPI (SSI0)
-#define CS1				0x08		// in
+#define SCLK			0x04		// in		IC900 LCD SPI (SSI0)
+#define CSS				0x08		// in
 #define MOSI			0x10		// in
 #define CS2				0x20		// in
-#define sparePA6		0x40		// in
+#define CS1				0x40		// in
 #define sparePA7		0x80		// in
-#define PORTA_DIRV		(0)
+#define PORTA_DIRV		(TXD0)
 #define	PORTA_DENV		(0xff)
-#define	PORTA_PURV		(SPCK|CS1|MOSI|CS2)
+#define	PORTA_PURV		(SCLK|CS1|MOSI|CS2|CSS|sparePA7)
 #define	PORTA_INIT		0
 
 // Port B defines
@@ -394,7 +394,7 @@ extern S8	xoffsent;			// xoff sent
 //-----------------------------------------------------------------------------
 
 void Init_Device(void);
-char process_IO(U8 flag);
+void process_IO(U8 flag);
 void  process_chg(U8 chg, char* buf, U8* key_mem, U8* keyh_mem);
 U8 get_status(U8* keyh_mem);
 U8 set_pttmode(U8 value);

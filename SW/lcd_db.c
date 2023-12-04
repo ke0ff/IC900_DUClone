@@ -40,6 +40,8 @@ U8	mainsm[MAINSM_LEN];		// main smet row
 U8	subsm[SUBSM_LEN];		// sub smet row
 U8	optrow[OPTROW_LEN];		// opt row
 
+U8	change_flag;			// bitmap of array changed flags
+
 // uPD7225 registers
 U8	CS1_REG;				// CS1 status register
 U8	CS2_REG;				// CS2 status register
@@ -134,6 +136,26 @@ void (*cs2_fn[32][3])(U8) = {
 
 //	(*fun_ptr_arr[ch])(a, b);
 
+U8 err1[7][5] = {
+		{ 0x39 , 0xE7 , 0x39 , 0x17 , 0xA0 },
+		{ 0x45 , 0x12 , 0x45 , 0x14 , 0x20 },
+		{ 0x41 , 0x12 , 0x45 , 0x14 , 0x20 },
+		{ 0x39 , 0xE2 , 0x45 , 0x17 , 0x20 },
+		{ 0x05 , 0x02 , 0x45 , 0x14 , 0x20 },
+		{ 0x45 , 0x02 , 0x44 , 0xA4 , 0x20 },
+		{ 0x39 , 0x07 , 0x38 , 0x44 , 0x3C },
+};
+
+U8 err2[7][5] = {
+		{0x1C , 0xF3 , 0x83 , 0xE7 , 0x00},
+		{0x22 , 0x89 , 0x00 , 0x88 , 0x80},
+		{0x20 , 0x89 , 0x00 , 0x88 , 0x80},
+		{0x1C , 0xF1 , 0x00 , 0x88 , 0x80},
+		{0x02 , 0x81 , 0x00 , 0x88 , 0x80},
+		{0x22 , 0x81 , 0x00 , 0x88 , 0x80},
+		{0x1C , 0x83 , 0x80 , 0x87 , 0x00}
+};
+
 //-----------------------------------------------------------------------------
 // Local Fn Declarations
 //-----------------------------------------------------------------------------
@@ -142,6 +164,79 @@ void (*cs2_fn[32][3])(U8) = {
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+
+//-----------------------------------------------------------------------------
+// process_LCD() handles lcd updates
+//-----------------------------------------------------------------------------
+void process_LCD(U8 iplfl){
+	U8	i;
+
+	if(iplfl){
+		// initialize LCD and internals
+		lcd_setup();
+		clear_all();
+		// force update
+		change_flag = MAIN7_FL|SUB7_FL|MAINSM_FL|SUBSM_FL|OPTROW_FL;
+	}
+	// if timer expired and change_flag has set bits, update LCD
+	if(change_flag){
+		for(i=0x80; i>= OPTROW_FL; i>>=1){
+			switch(i){
+			case MAIN7_FL:
+				wrlcd_str(main7, MAIN7_LEN, MAIN7_OFFS);
+				break;
+
+			case SUB7_FL:
+				wrlcd_str(sub7, SUB7_LEN, SUB7_OFFS);
+				break;
+
+			case MAINSM_FL:
+				wrlcd_str(mainsm, MAINSM_LEN, MAINSM_OFFS);
+				break;
+
+			case SUBSM_FL:
+				wrlcd_str(subsm, SUBSM_LEN, SUBSM_OFFS);
+				break;
+
+			case OPTROW_FL:
+				wrlcd_str(optrow, OPTROW_LEN, OPTROW_OFFS);
+				break;
+
+			default:
+				break;
+			}
+		}
+		change_flag = 0;
+	}
+	return;
+}
+
+/*
+#define	MODE_SET	0x49			// /3 time-div, 1/3 bias, 2E-8 fdiv
+#define	BLINK_SLOW	0x1A			// low-bit is flash-rate
+#define	BLINK_FAST	0x1B			//  "   " ...
+#define	BLINK_OFF	0x18			// disable blink
+#define	DISP_ON		0x11			// enable disp
+#define	DISP_OFF	0x10			// blank disp
+#define	WITH_DECODE	0x15			// 7-seg decode
+#define	WITHOUT_DECODE	0x14		// no decode
+#define	LOAD_PTR	0xE0			// OR with (0x1f masked address)
+#define	WR_DMEM		0xD0			// write with (0x0f masked data)
+#define	OR_DMEM		0xB0			// OR with (0x0f masked data)
+#define	AND_DMEM	0x90			// AND with (0x0f masked data)
+#define	CLR_DMEM	0x20			// clear disp. mem
+#define	WR_BMEM		0xC0			// write with (0x0f masked data)
+#define	OR_BMEM		0xA0			// OR with (0x0f masked data)
+#define	AND_BMEM	0x80			// AND with (0x0f masked data)
+#define	CLR_BMEM	0x00			// clear blink. mem*/
+
+//-----------------------------------------------------------------------------
+// process_SPI() fetches SPI data and processes cmds/data
+//-----------------------------------------------------------------------------
+void process_SPI(U8 iplfl){
+
+	return;
+}
 
 //-----------------------------------------------------------------------------
 // Clear pixel mem arrays
@@ -213,8 +308,118 @@ void clear_all(void){
 		CS2_dmem[i] = 0;
 		CS2_bmem[i] = 0;
 	}
+	change_flag = 0;
 	return;
 }
+
+//-----------------------------------------------------------------------------
+// disp_err1() displays spi overflow error
+//-----------------------------------------------------------------------------
+void disp_err(U8 mnum){
+	U8	i;
+	U8	j;
+	U16 addr;
+
+	if((mnum > 2) || (mnum == 0)) return;
+	if(mnum == 1) addr = ERR_OFFS;							// msg1 pixel address
+	if(mnum == 2) addr = ERR2_OFFS;							// msg2 pixel address
+	wrdb(0x98, LCDCMD, STA01);								// graphics ON, text OFF
+	for(j=0; j<7; j++){
+		wrdb((uint8_t)(addr&0xff), LCDDATA, STA01);			// pixel address
+		wrdb((uint8_t)(addr>>8), LCDDATA, STA01);			// pixel address
+		wrdb(0x24, LCDCMD, STA01);							// set address pointer
+		wrdb(0xB0, LCDCMD, STA01);							// auto write ON
+		for(i=0;i<5;i++){    								// send msg
+			if(mnum == 1) wrdb(err1[j][i], LCDDATA, STA23);	// pixel address
+			if(mnum == 2) wrdb(err2[j][i], LCDDATA, STA23);	// pixel address
+		}
+		wrdb(0xB2, LCDCMD, STA01);							// auto write OFF
+		addr += 30;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// lcdClear() clear lcd display RAM
+//-----------------------------------------------------------------------------
+void lcdClear(void){
+	uint16_t i;
+
+	wrdb(0x9c, LCDCMD, STA01);				//graphics ON, text OFF
+	wrdb(0x00, LCDDATA, STA01);
+	wrdb(0x40, LCDDATA, STA01);
+	wrdb(0x24, LCDCMD, STA01);				//set address pointer = 0x0040 (first pixel)
+	wrdb(0xB0, LCDCMD, STA01);				//auto write ON
+	for(i=0;i<30720/8;i++)					//fill screen with pixels
+	{
+		wrdb(0x00, LCDDATA, STA23);
+	}
+	wrdb(0xB2, LCDCMD, STA01);				//auto write OFF
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// wrlcd_str() Send LCD data
+//	string pointer
+//	string length
+//	LCD addr
+//-----------------------------------------------------------------------------
+void wrlcd_str(U8 *lcd_string, U16 strlen, U16 lcd_addr){
+	uint16_t	i;
+	uint8_t*	dp;
+
+	wrdb(0x98, LCDCMD, STA01);				//graphics ON, text ON
+	wrdb((U8)(lcd_addr&0xff), LCDDATA, STA01);
+	wrdb((U8)(lcd_addr>>8), LCDDATA, STA01);
+	wrdb(0x24, LCDCMD, STA01);				//set address pointer (first pixel, upper left corner)
+	wrdb(0xB0, LCDCMD, STA01);				//auto write ON
+
+	dp = lcd_string;
+	for(i=0;i<strlen;i++)    //fill screen with pixels
+	{
+		wrdb(*dp++, LCDDATA, STA23);
+	}
+	wrdb(0xB2, LCDCMD, STA01);				//auto write OFF
+	return;
+}
+/*
+// examples:
+wrlcd_str(main7, MAIN7_LEN, MAIN7_OFFS);
+wrlcd_str(sub7, SUB7_LEN, SUB7_OFFS);
+wrlcd_str(mainsm, MAINSM_LEN, MAINSM_OFFS);
+wrlcd_str(optrow, OPTROW_LEN, OPTROW_OFFS);
+wrlcd_str(subsm, SUBSM_LEN, SUBSM_OFFS);
+*/
+
+/****************************************************
+* Initialization For controller + Setup, to run once*
+*****************************************************/
+
+void lcd_setup(void){
+	GPIO_PORTB_DIR_R = 0;				// port = in
+	GPIO_PORTE_DATA_R = nTRD|nTWR|nTCS;
+	lcd_cntl(LDSC_RESET);
+	wait(20);
+
+	wrdb(0x00, LCDDATA, STA01);
+	wrdb(0x40, LCDDATA, STA01);
+	wrdb(0x42, LCDCMD, STA01);			//graphic home address
+
+	wrdb(0x1E, LCDDATA, STA01);
+	wrdb(0x00, LCDDATA, STA01);
+	wrdb(0x41, LCDCMD, STA01);			//text area
+
+	wrdb(0x1E, LCDDATA, STA01);
+	wrdb(0x00, LCDDATA, STA01);
+	wrdb(0x43, LCDCMD, STA01);			//graphic area
+
+	wrdb(0x80, LCDCMD, STA01);			//OR mode
+
+	wait(10);
+	lcdClear();
+	clear_all();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // drivers
 
@@ -803,6 +1008,7 @@ void wr_msym(U8* sptr, U8 xlen, U8 ylen, U8 blank, U16 daddr, U8* mptr){
 //-----------------------------------------------------------------------------
 void sg_mmin(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		main7[MINMSYM_ADDR] |= gdash;
@@ -820,6 +1026,7 @@ void sg_mmin(U8 son){
 
 void sg_smin(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sub7[MINSSYM_ADDR] |= gdash;
@@ -840,6 +1047,7 @@ void sg_smin(U8 son){
 //-----------------------------------------------------------------------------
 void sg_mdup(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gdup, DUPSYM_X, DUPSYM_Y, 0, DUPMSYM_ADDR, main7);
@@ -857,6 +1065,7 @@ void sg_mdup(U8 son){
 
 void sg_sdup(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gdup, DUPSYM_X, DUPSYM_Y, 0, DUPSSYM_ADDR, sub7);
@@ -877,6 +1086,7 @@ void sg_sdup(U8 son){
 //-----------------------------------------------------------------------------
 void sg_mtne(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gtone, TONESYM_X, TONESYM_Y, 0, TONMSYM_ADDR, main7);
@@ -894,6 +1104,7 @@ void sg_mtne(U8 son){
 
 void sg_stne(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gtone, TONESYM_X, TONESYM_Y, 0, TONSSYM_ADDR, sub7);
@@ -914,6 +1125,7 @@ void sg_stne(U8 son){
 //-----------------------------------------------------------------------------
 void sg_mmem(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gmem, MEMSYM_X, MEMSYM_Y, 0, MEMMSYM_ADDR, main7);
@@ -931,6 +1143,7 @@ void sg_mmem(U8 son){
 
 void sg_smem(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gmem, MEMSYM_X, MEMSYM_Y, 0, MEMSSYM_ADDR, sub7);
@@ -953,6 +1166,7 @@ void sg_smem(U8 son){
 //-----------------------------------------------------------------------------
 void sg_mskp(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gskp, SKPSYM_X, SKPSYM_Y, 0, SKPMSYM_ADDR, main7);
@@ -970,6 +1184,7 @@ void sg_mskp(U8 son){
 
 void sg_sskp(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gskp, SKPSYM_X, SKPSYM_Y, 0, SKPSSYM_ADDR, sub7);
@@ -990,6 +1205,7 @@ void sg_sskp(U8 son){
 //-----------------------------------------------------------------------------
 void sg_mm0(U8 son){
 
+	change_flag |= MAINSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet1, SM1SYM_X, SM1SYM_Y, 0, MSMET1_ADDR, mainsm);
@@ -1007,6 +1223,7 @@ void sg_mm0(U8 son){
 
 void sg_mm1(U8 son){
 
+	change_flag |= MAINSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet2, SM2SYM_X, SM2SYM_Y, 0, MSMET2_ADDR, mainsm);
@@ -1024,6 +1241,7 @@ void sg_mm1(U8 son){
 
 void sg_mm2(U8 son){
 
+	change_flag |= MAINSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet3, SM3SYM_X, SM3SYM_Y, 0, MSMET3_ADDR, mainsm);
@@ -1041,6 +1259,7 @@ void sg_mm2(U8 son){
 
 void sg_mm3(U8 son){
 
+	change_flag |= MAINSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet4, SM4SYM_X, SM4SYM_Y, 0, MSMET4_ADDR, mainsm);
@@ -1058,6 +1277,7 @@ void sg_mm3(U8 son){
 
 void sg_mm4(U8 son){
 
+	change_flag |= MAINSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet5, SM5SYM_X, SM5SYM_Y, 0, MSMET5_ADDR, mainsm);
@@ -1075,6 +1295,7 @@ void sg_mm4(U8 son){
 
 void sg_mm5(U8 son){
 
+	change_flag |= MAINSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet6, SM6SYM_X, SM6SYM_Y, 0, MSMET6_ADDR, mainsm);
@@ -1092,6 +1313,7 @@ void sg_mm5(U8 son){
 
 void sg_mm6(U8 son){
 
+	change_flag |= MAINSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet7, SM7SYM_X, SM7SYM_Y, 0, MSMET7_ADDR, mainsm);
@@ -1109,6 +1331,7 @@ void sg_mm6(U8 son){
 
 void sg_sm0(U8 son){
 
+	change_flag |= SUBSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet1, SM1SYM_X, SM1SYM_Y, 0, SSMET1_ADDR, subsm);
@@ -1126,6 +1349,7 @@ void sg_sm0(U8 son){
 
 void sg_sm1(U8 son){
 
+	change_flag |= SUBSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet2, SM2SYM_X, SM2SYM_Y, 0, SSMET2_ADDR, subsm);
@@ -1143,6 +1367,7 @@ void sg_sm1(U8 son){
 
 void sg_sm2(U8 son){
 
+	change_flag |= SUBSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet3, SM3SYM_X, SM3SYM_Y, 0, SSMET3_ADDR, subsm);
@@ -1160,6 +1385,7 @@ void sg_sm2(U8 son){
 
 void sg_sm3(U8 son){
 
+	change_flag |= SUBSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet4, SM4SYM_X, SM4SYM_Y, 0, SSMET4_ADDR, subsm);
@@ -1177,6 +1403,7 @@ void sg_sm3(U8 son){
 
 void sg_sm4(U8 son){
 
+	change_flag |= SUBSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet5, SM5SYM_X, SM5SYM_Y, 0, SSMET5_ADDR, subsm);
@@ -1194,6 +1421,7 @@ void sg_sm4(U8 son){
 
 void sg_sm5(U8 son){
 
+	change_flag |= SUBSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet6, SM6SYM_X, SM6SYM_Y, 0, SSMET6_ADDR, subsm);
@@ -1211,6 +1439,7 @@ void sg_sm5(U8 son){
 
 void sg_sm6(U8 son){
 
+	change_flag |= SUBSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsmet7, SM7SYM_X, SM7SYM_Y, 0, SSMET7_ADDR, subsm);
@@ -1231,6 +1460,7 @@ void sg_sm6(U8 son){
 //-----------------------------------------------------------------------------
 void sg_ow(U8 son){
 
+	change_flag |= MAINSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gow, OWSYM_X, OWSYM_Y, 0, OW_ADDR, mainsm);
@@ -1251,6 +1481,7 @@ void sg_ow(U8 son){
 //-----------------------------------------------------------------------------
 void sg_low(U8 son){
 
+	change_flag |= MAINSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*glow, LOWSYM_X, LOWSYM_Y, 0, LOW_ADDR, mainsm);
@@ -1271,6 +1502,7 @@ void sg_low(U8 son){
 //-----------------------------------------------------------------------------
 void sg_ts(U8 son){
 
+	change_flag |= SUBSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gts, TSSYM_X, TSSYM_Y, 0, TS_ADDR, subsm);
@@ -1291,6 +1523,7 @@ void sg_ts(U8 son){
 //-----------------------------------------------------------------------------
 void sg_mhz(U8 son){
 
+	change_flag |= SUBSM_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gmhz, MHZSYM_X, MHZSYM_Y, 0, MHZ_ADDR, subsm);
@@ -1311,6 +1544,7 @@ void sg_mhz(U8 son){
 //-----------------------------------------------------------------------------
 void sg_prg(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gprog, PROGSYM_X, PROGSYM_Y, 0, PROG_ADDR, sub7);
@@ -1331,6 +1565,7 @@ void sg_prg(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bnd(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gband, BANDSYM_X, BANDSYM_Y, 0, BAND_ADDR, sub7);
@@ -1351,6 +1586,7 @@ void sg_bnd(U8 son){
 //-----------------------------------------------------------------------------
 void sg_sub(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gsub, SUBSYM_X, SUBSYM_Y, 0, SUB_ADDR, sub7);
@@ -1371,6 +1607,7 @@ void sg_sub(U8 son){
 //-----------------------------------------------------------------------------
 void sg_lck(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*glock, LOCKSYM_X, LOCKSYM_Y, 0, LOCK_ADDR, sub7);
@@ -1391,6 +1628,7 @@ void sg_lck(U8 son){
 //-----------------------------------------------------------------------------
 void sg_vxo(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gvxo, VXOSYM_X, VXOSYM_Y, 0, VXO_ADDR, optrow);
@@ -1411,6 +1649,7 @@ void sg_vxo(U8 son){
 //-----------------------------------------------------------------------------
 void sg_rit(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*grit, RITSYM_X, RITSYM_Y, 0, RIT_ADDR, optrow);
@@ -1431,6 +1670,7 @@ void sg_rit(U8 son){
 //-----------------------------------------------------------------------------
 void sg_mss(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*goptup, OPTUPSYM_X, OPTUPSYM_Y, 0, OPTA_ADDR+UP_ADDR, optrow);
@@ -1451,6 +1691,7 @@ void sg_mss(U8 son){
 //-----------------------------------------------------------------------------
 void sg_tss(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*goptdn, OPTDNSYM_X, OPTDNSYM_Y, 0, OPTA_ADDR+DN_ADDR, optrow);
@@ -1471,6 +1712,7 @@ void sg_tss(U8 son){
 //-----------------------------------------------------------------------------
 void sg_tsq(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gopttq, OPTASYM_X, OPTASYM_Y, 0, OPTA_ADDR+OPT_ADDR, optrow);
@@ -1491,6 +1733,7 @@ void sg_tsq(U8 son){
 //-----------------------------------------------------------------------------
 void sg_dsm(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*goptup, OPTUPSYM_X, OPTUPSYM_Y, 0, OPTB_ADDR+UP_ADDR, optrow);
@@ -1511,6 +1754,7 @@ void sg_dsm(U8 son){
 //-----------------------------------------------------------------------------
 void sg_dss(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*goptdn, OPTDNSYM_X, OPTDNSYM_Y, 0, OPTB_ADDR+DN_ADDR, optrow);
@@ -1531,6 +1775,7 @@ void sg_dss(U8 son){
 //-----------------------------------------------------------------------------
 void sg_dsq(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*goptdq, OPTBSYM_X, OPTBSYM_Y, 0, OPTB_ADDR+OPT_ADDR, optrow);
@@ -1551,6 +1796,7 @@ void sg_dsq(U8 son){
 //-----------------------------------------------------------------------------
 void sg_op1m(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*goptup, OPTUPSYM_X, OPTUPSYM_Y, 0, OPTC_ADDR+UP_ADDR, optrow);
@@ -1571,6 +1817,7 @@ void sg_op1m(U8 son){
 //-----------------------------------------------------------------------------
 void sg_op1s(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*goptdn, OPTDNSYM_X, OPTDNSYM_Y, 0, OPTC_ADDR+DN_ADDR, optrow);
@@ -1591,6 +1838,7 @@ void sg_op1s(U8 son){
 //-----------------------------------------------------------------------------
 void sg_op1(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gopt1, OPTCSYM_X, OPTCSYM_Y, 0, OPTC_ADDR+OPT_ADDR, optrow);
@@ -1611,6 +1859,7 @@ void sg_op1(U8 son){
 //-----------------------------------------------------------------------------
 void sg_op2m(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*goptup, OPTUPSYM_X, OPTUPSYM_Y, 0, OPTD_ADDR+UP_ADDR, optrow);
@@ -1631,6 +1880,7 @@ void sg_op2m(U8 son){
 //-----------------------------------------------------------------------------
 void sg_op2s(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*goptdn, OPTDNSYM_X, OPTDNSYM_Y, 0, OPTD_ADDR+DN_ADDR, optrow);
@@ -1651,6 +1901,7 @@ void sg_op2s(U8 son){
 //-----------------------------------------------------------------------------
 void sg_op2(U8 son){
 
+	change_flag |= OPTROW_FL;
 	switch(son){
 	case SEGOR:
 		wr_msym2(*gopt2, OPTDSYM_X, OPTDSYM_Y, 0, OPTD_ADDR+OPT_ADDR, optrow);
@@ -1671,6 +1922,7 @@ void sg_op2(U8 son){
 //-----------------------------------------------------------------------------
 void sg_mdp(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		wr_mseg(CSEGP, 0, MDADDR3);
@@ -1691,6 +1943,7 @@ void sg_mdp(U8 son){
 //-----------------------------------------------------------------------------
 void sg_mdp2(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		wr_mseg(CSEGP, 0, MDADDR0);
@@ -1711,6 +1964,7 @@ void sg_mdp2(U8 son){
 //-----------------------------------------------------------------------------
 void sg_sdp(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		wr_sseg(CSEGP, 0, SDADDR3, sub7);
@@ -1731,6 +1985,7 @@ void sg_sdp(U8 son){
 //-----------------------------------------------------------------------------
 void sg_sdp2(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		wr_sseg(CSEGP, 0, SDADDR0, sub7);
@@ -1751,6 +2006,7 @@ void sg_sdp2(U8 son){
 //-----------------------------------------------------------------------------
 void sg_m00(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		wr_mdigit('S', 0, MDADDRS);
@@ -1771,6 +2027,7 @@ void sg_m00(U8 son){
 //-----------------------------------------------------------------------------
 void sg_s00(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		wr_sdigit('S', 0, SDADDRS, sub7);
@@ -1794,6 +2051,7 @@ void sg_s00(U8 son){
 void sg_mbcd(U8 bcdd, U16 digitaddr, U8 blank, U8 main_sel){
 	U8	i;
 
+	change_flag |= MAIN7_FL;
 //	wr_mdigit('8', 1, digitaddr);
 	for(i=0x80; i!=0; i>>=1){
 		wr_mseg(bcdd & i, blank, digitaddr);
@@ -1810,11 +2068,13 @@ void sg_sbcd(U8 bcdd, U16 digitaddr, U8 blank, U8 main_sel){
 	U8	i;
 
 	if(main_sel){
+		change_flag |= MAIN7_FL;
 //		wr_sdigit('8', 1, digitaddr, main7);
 		for(i=0x80; i!=0; i>>=1){
 			wr_sseg(bcdd & i, blank, digitaddr, main7);
 		}
 	}else{
+		change_flag |= SUB7_FL;
 //		wr_sdigit('8', 1, digitaddr, sub7);
 		for(i=0x80; i!=0; i>>=1){
 			wr_sseg(bcdd & i, blank, digitaddr, sub7);
@@ -1846,6 +2106,7 @@ void null_fn(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m0a(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGA, MDADDR0, 0, 1);
@@ -1866,6 +2127,7 @@ void sg_bcd_m0a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m0b(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGB, MDADDR0, 0, 1);
@@ -1886,6 +2148,7 @@ void sg_bcd_m0b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m0c(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGC, MDADDR0, 0, 1);
@@ -1906,6 +2169,7 @@ void sg_bcd_m0c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m0d(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGD, MDADDR0, 0, 1);
@@ -1926,6 +2190,7 @@ void sg_bcd_m0d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m0e(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGE, MDADDR0, 0, 1);
@@ -1946,6 +2211,7 @@ void sg_bcd_m0e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m0f(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGF, MDADDR0, 0, 1);
@@ -1966,6 +2232,7 @@ void sg_bcd_m0f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m0g(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGG, MDADDR0, 0, 1);
@@ -1987,6 +2254,7 @@ void sg_bcd_m0g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m1a(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGA, MDADDR1, 0, 1);
@@ -2007,6 +2275,7 @@ void sg_bcd_m1a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m1b(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGB, MDADDR1, 0, 1);
@@ -2027,6 +2296,7 @@ void sg_bcd_m1b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m1c(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGC, MDADDR1, 0, 1);
@@ -2047,6 +2317,7 @@ void sg_bcd_m1c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m1d(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGD, MDADDR1, 0, 1);
@@ -2067,6 +2338,7 @@ void sg_bcd_m1d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m1e(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGE, MDADDR1, 0, 1);
@@ -2087,6 +2359,7 @@ void sg_bcd_m1e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m1f(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGF, MDADDR1, 0, 1);
@@ -2107,6 +2380,7 @@ void sg_bcd_m1f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m1g(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGG, MDADDR1, 0, 1);
@@ -2127,6 +2401,7 @@ void sg_bcd_m1g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m2a(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGA, MDADDR2, 0, 1);
@@ -2147,6 +2422,7 @@ void sg_bcd_m2a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m2b(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGB, MDADDR2, 0, 1);
@@ -2167,6 +2443,7 @@ void sg_bcd_m2b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m2c(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGC, MDADDR2, 0, 1);
@@ -2187,6 +2464,7 @@ void sg_bcd_m2c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m2d(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGD, MDADDR2, 0, 1);
@@ -2207,6 +2485,7 @@ void sg_bcd_m2d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m2e(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGE, MDADDR2, 0, 1);
@@ -2227,6 +2506,7 @@ void sg_bcd_m2e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m2f(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGF, MDADDR2, 0, 1);
@@ -2247,6 +2527,7 @@ void sg_bcd_m2f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m2g(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGG, MDADDR2, 0, 1);
@@ -2267,6 +2548,7 @@ void sg_bcd_m2g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m3a(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGA, MDADDR3, 0, 1);
@@ -2287,6 +2569,7 @@ void sg_bcd_m3a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m3b(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGB, MDADDR3, 0, 1);
@@ -2307,6 +2590,7 @@ void sg_bcd_m3b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m3c(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGC, MDADDR3, 0, 1);
@@ -2327,6 +2611,7 @@ void sg_bcd_m3c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m3d(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGD, MDADDR3, 0, 1);
@@ -2347,6 +2632,7 @@ void sg_bcd_m3d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m3e(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGE, MDADDR3, 0, 1);
@@ -2367,6 +2653,7 @@ void sg_bcd_m3e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m3f(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGF, MDADDR3, 0, 1);
@@ -2387,6 +2674,7 @@ void sg_bcd_m3f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m3g(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGG, MDADDR3, 0, 1);
@@ -2407,6 +2695,7 @@ void sg_bcd_m3g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m4a(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGA, MDADDR4, 0, 1);
@@ -2427,6 +2716,7 @@ void sg_bcd_m4a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m4b(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGB, MDADDR4, 0, 1);
@@ -2447,6 +2737,7 @@ void sg_bcd_m4b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m4c(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGC, MDADDR4, 0, 1);
@@ -2467,6 +2758,7 @@ void sg_bcd_m4c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m4d(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGD, MDADDR4, 0, 1);
@@ -2487,6 +2779,7 @@ void sg_bcd_m4d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m4e(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGE, MDADDR4, 0, 1);
@@ -2507,6 +2800,7 @@ void sg_bcd_m4e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m4f(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGF, MDADDR4, 0, 1);
@@ -2527,6 +2821,7 @@ void sg_bcd_m4f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m4g(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGG, MDADDR4, 0, 1);
@@ -2547,6 +2842,7 @@ void sg_bcd_m4g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m5a(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGA, MDADDR5, 0, 1);
@@ -2567,6 +2863,7 @@ void sg_bcd_m5a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m5b(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGB, MDADDR5, 0, 1);
@@ -2587,6 +2884,7 @@ void sg_bcd_m5b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m5c(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGC, MDADDR5, 0, 1);
@@ -2607,6 +2905,7 @@ void sg_bcd_m5c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m5d(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGD, MDADDR5, 0, 1);
@@ -2627,6 +2926,7 @@ void sg_bcd_m5d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m5e(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGE, MDADDR5, 0, 1);
@@ -2647,6 +2947,7 @@ void sg_bcd_m5e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m5f(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGF, MDADDR5, 0, 1);
@@ -2667,6 +2968,7 @@ void sg_bcd_m5f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m5g(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGG, MDADDR5, 0, 1);
@@ -2687,6 +2989,7 @@ void sg_bcd_m5g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m6a(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGA, MDADDR6, 0, 1);
@@ -2707,6 +3010,7 @@ void sg_bcd_m6a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m6bc(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGB|CSEGC, MDADDR6, 0, 1);
@@ -2727,6 +3031,7 @@ void sg_bcd_m6bc(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m6c(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGC, MDADDR6, 0, 1);
@@ -2747,6 +3052,7 @@ void sg_bcd_m6c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m6d(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGD, MDADDR6, 0, 1);
@@ -2767,6 +3073,7 @@ void sg_bcd_m6d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m6e(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGE, MDADDR6, 0, 1);
@@ -2787,6 +3094,7 @@ void sg_bcd_m6e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m6f(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGF, MDADDR6, 0, 1);
@@ -2807,6 +3115,7 @@ void sg_bcd_m6f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_m6g(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_mbcd(CSEGG, MDADDR6, 0, 1);
@@ -2829,6 +3138,7 @@ void sg_bcd_m6g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s0a(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGA, SDADDR0, 0, 0);
@@ -2849,6 +3159,7 @@ void sg_bcd_s0a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s0b(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGB, SDADDR0, 0, 0);
@@ -2869,6 +3180,7 @@ void sg_bcd_s0b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s0c(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGC, SDADDR0, 0, 0);
@@ -2889,6 +3201,7 @@ void sg_bcd_s0c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s0d(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGD, SDADDR0, 0, 0);
@@ -2909,6 +3222,7 @@ void sg_bcd_s0d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s0e(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGE, SDADDR0, 0, 0);
@@ -2929,6 +3243,7 @@ void sg_bcd_s0e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s0f(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGF, SDADDR0, 0, 0);
@@ -2949,6 +3264,7 @@ void sg_bcd_s0f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s0g(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGG, SDADDR0, 0, 0);
@@ -2970,6 +3286,7 @@ void sg_bcd_s0g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s1a(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGA, SDADDR1, 0, 0);
@@ -2990,6 +3307,7 @@ void sg_bcd_s1a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s1b(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGB, SDADDR1, 0, 0);
@@ -3010,6 +3328,7 @@ void sg_bcd_s1b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s1c(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGC, SDADDR1, 0, 0);
@@ -3030,6 +3349,7 @@ void sg_bcd_s1c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s1d(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGD, SDADDR1, 0, 0);
@@ -3050,6 +3370,7 @@ void sg_bcd_s1d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s1e(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGE, SDADDR1, 0, 0);
@@ -3070,6 +3391,7 @@ void sg_bcd_s1e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s1f(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGF, SDADDR1, 0, 0);
@@ -3090,6 +3412,7 @@ void sg_bcd_s1f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s1g(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGG, SDADDR1, 0, 0);
@@ -3110,6 +3433,7 @@ void sg_bcd_s1g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s2a(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGA, SDADDR2, 0, 0);
@@ -3130,6 +3454,7 @@ void sg_bcd_s2a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s2b(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGB, SDADDR2, 0, 0);
@@ -3150,6 +3475,7 @@ void sg_bcd_s2b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s2c(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGC, SDADDR2, 0, 0);
@@ -3170,6 +3496,7 @@ void sg_bcd_s2c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s2d(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGD, SDADDR2, 0, 0);
@@ -3190,6 +3517,7 @@ void sg_bcd_s2d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s2e(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGE, SDADDR2, 0, 0);
@@ -3210,6 +3538,7 @@ void sg_bcd_s2e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s2f(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGF, SDADDR2, 0, 0);
@@ -3230,6 +3559,7 @@ void sg_bcd_s2f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s2g(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGG, SDADDR2, 0, 0);
@@ -3250,6 +3580,7 @@ void sg_bcd_s2g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s3a(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGA, SDADDR3, 0, 0);
@@ -3270,6 +3601,7 @@ void sg_bcd_s3a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s3b(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGB, SDADDR3, 0, 0);
@@ -3290,6 +3622,7 @@ void sg_bcd_s3b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s3c(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGC, SDADDR3, 0, 0);
@@ -3310,6 +3643,7 @@ void sg_bcd_s3c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s3d(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGD, SDADDR3, 0, 0);
@@ -3330,6 +3664,7 @@ void sg_bcd_s3d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s3e(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGE, SDADDR3, 0, 0);
@@ -3350,6 +3685,7 @@ void sg_bcd_s3e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s3f(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGF, SDADDR3, 0, 0);
@@ -3370,6 +3706,7 @@ void sg_bcd_s3f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s3g(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGG, SDADDR3, 0, 0);
@@ -3390,6 +3727,7 @@ void sg_bcd_s3g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s4a(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGA, SDADDR4, 0, 0);
@@ -3410,6 +3748,7 @@ void sg_bcd_s4a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s4b(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGB, SDADDR4, 0, 0);
@@ -3430,6 +3769,7 @@ void sg_bcd_s4b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s4c(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGC, SDADDR4, 0, 0);
@@ -3450,6 +3790,7 @@ void sg_bcd_s4c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s4d(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGD, SDADDR4, 0, 0);
@@ -3470,6 +3811,7 @@ void sg_bcd_s4d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s4e(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGE, SDADDR4, 0, 0);
@@ -3490,6 +3832,7 @@ void sg_bcd_s4e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s4f(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGF, SDADDR4, 0, 0);
@@ -3510,6 +3853,7 @@ void sg_bcd_s4f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s4g(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGG, SDADDR4, 0, 0);
@@ -3530,6 +3874,7 @@ void sg_bcd_s4g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s5a(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGA, SDADDR5, 0, 0);
@@ -3550,6 +3895,7 @@ void sg_bcd_s5a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s5b(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGB, SDADDR5, 0, 0);
@@ -3570,6 +3916,7 @@ void sg_bcd_s5b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s5c(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGC, SDADDR5, 0, 0);
@@ -3590,6 +3937,7 @@ void sg_bcd_s5c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s5d(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGD, SDADDR5, 0, 0);
@@ -3610,6 +3958,7 @@ void sg_bcd_s5d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s5e(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGE, SDADDR5, 0, 0);
@@ -3630,6 +3979,7 @@ void sg_bcd_s5e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s5f(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGF, SDADDR5, 0, 0);
@@ -3650,6 +4000,7 @@ void sg_bcd_s5f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s5g(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGG, SDADDR5, 0, 0);
@@ -3670,6 +4021,7 @@ void sg_bcd_s5g(U8 son){
 //-----------------------------------------------------------------------------
 /*void sg_bcd_s6a(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGA, SDADDR6, 0, 0);
@@ -3690,6 +4042,7 @@ void sg_bcd_s5g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s6bc(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGB|CSEGC, SDADDR6, 0, 0);
@@ -3710,6 +4063,7 @@ void sg_bcd_s6bc(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s6c(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGC, SDADDR6, 0, 0);
@@ -3730,6 +4084,7 @@ void sg_bcd_s6c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s6d(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGD, SDADDR6, 0, 0);
@@ -3750,6 +4105,7 @@ void sg_bcd_s6d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s6e(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGE, SDADDR6, 0, 0);
@@ -3770,6 +4126,7 @@ void sg_bcd_s6e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s6f(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGF, SDADDR6, 0, 0);
@@ -3790,6 +4147,7 @@ void sg_bcd_s6f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_s6g(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGG, SDADDR6, 0, 0);
@@ -3814,6 +4172,7 @@ void sg_bcd_s6g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_s7a(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGA, MEMSCH_ADDR, 0, 0);
@@ -3834,6 +4193,7 @@ void sg_bcd_mem_s7a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_s7b(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGB, MEMSCH_ADDR, 0, 0);
@@ -3854,6 +4214,7 @@ void sg_bcd_mem_s7b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_s7c(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGC, MEMSCH_ADDR, 0, 0);
@@ -3874,6 +4235,7 @@ void sg_bcd_mem_s7c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_s7d(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGD, MEMSCH_ADDR, 0, 0);
@@ -3894,6 +4256,7 @@ void sg_bcd_mem_s7d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_s7e(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGE, MEMSCH_ADDR, 0, 0);
@@ -3914,6 +4277,7 @@ void sg_bcd_mem_s7e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_s7f(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGF, MEMSCH_ADDR, 0, 0);
@@ -3934,6 +4298,7 @@ void sg_bcd_mem_s7f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_s7g(U8 son){
 
+	change_flag |= SUB7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGG, MEMSCH_ADDR, 0, 0);
@@ -3957,6 +4322,7 @@ void sg_bcd_mem_s7g(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_m7a(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGA, MEMSCH_ADDR, 0, 1);
@@ -3979,6 +4345,7 @@ void sg_bcd_mem_m7a(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_m7b(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGB, MEMSCH_ADDR, 0, 1);
@@ -3999,6 +4366,7 @@ void sg_bcd_mem_m7b(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_m7c(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGC, MEMSCH_ADDR, 0, 1);
@@ -4019,6 +4387,7 @@ void sg_bcd_mem_m7c(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_m7d(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGD, MEMSCH_ADDR, 0, 1);
@@ -4039,6 +4408,7 @@ void sg_bcd_mem_m7d(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_m7e(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGE, MEMSCH_ADDR, 0, 1);
@@ -4059,6 +4429,7 @@ void sg_bcd_mem_m7e(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_m7f(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGF, MEMSCH_ADDR, 0, 1);
@@ -4079,6 +4450,7 @@ void sg_bcd_mem_m7f(U8 son){
 //-----------------------------------------------------------------------------
 void sg_bcd_mem_m7g(U8 son){
 
+	change_flag |= MAIN7_FL;
 	switch(son){
 	case SEGOR:
 		sg_sbcd(CSEGG, MEMSCH_ADDR, 0, 1);
