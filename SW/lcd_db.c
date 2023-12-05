@@ -23,6 +23,7 @@
 #include "lcd_db.h"
 #include "segments.h"
 #include "graphics.h"
+#include "spi.h"
 #define	LCD_DB
 
 //------------------------------------------------------------------------------
@@ -43,8 +44,8 @@ U8	optrow[OPTROW_LEN];		// opt row
 U8	change_flag;			// bitmap of array changed flags
 
 // uPD7225 registers
-U8	CS1_REG;				// CS1 status register
-U8	CS2_REG;				// CS2 status register
+U8	CS1_reg;				// CS1 status register
+U8	CS2_reg;				// CS2 status register
 
 // uPD7225 memory arrays
 // segment change memory array
@@ -173,6 +174,8 @@ void process_LCD(U8 iplfl){
 
 	if(iplfl){
 		// initialize LCD and internals
+		CS1_reg = 0;
+		CS2_reg = 0;
 		lcd_setup();
 		clear_all();
 		// force update
@@ -212,6 +215,12 @@ void process_LCD(U8 iplfl){
 }
 
 /*
+// CSn_reg defines:
+#define	CS_DECODE7	0x01			// 7-seg decoder enabled
+#define	CS_FBLINK	0x02			// fast blink
+#define	CS_SBLINK	0x04			// slow blink
+#define	CS_DISPON	0x08			// disp enable
+
 #define	MODE_SET	0x49			// /3 time-div, 1/3 bias, 2E-8 fdiv
 #define	BLINK_SLOW	0x1A			// low-bit is flash-rate
 #define	BLINK_FAST	0x1B			//  "   " ...
@@ -220,7 +229,10 @@ void process_LCD(U8 iplfl){
 #define	DISP_OFF	0x10			// blank disp
 #define	WITH_DECODE	0x15			// 7-seg decode
 #define	WITHOUT_DECODE	0x14		// no decode
-#define	LOAD_PTR	0xE0			// OR with (0x1f masked address)
+#define	LOAD_PTR	0xE0			// OR with 0x1f (masked address)
+#define	LOAD_PTR2	0xF0			// switch alternate
+#define	AMASK		0x1F			// address mask
+#define	DMASK		0x0F			// data mask
 #define	WR_DMEM		0xD0			// write with (0x0f masked data)
 #define	OR_DMEM		0xB0			// OR with (0x0f masked data)
 #define	AND_DMEM	0x90			// AND with (0x0f masked data)
@@ -233,7 +245,286 @@ void process_LCD(U8 iplfl){
 //-----------------------------------------------------------------------------
 // process_SPI() fetches SPI data and processes cmds/data
 //-----------------------------------------------------------------------------
+U8	cs1_idx;
+U8	cs2_idx;
+U8	seg7[16][3] = {		// 7-seg encoder LUT
+		{3, 5, 3},		// 0
+		{3, 0, 0},		// 1
+		{1, 7, 2},		// 2
+		{3, 7, 0},		// 3
+		{3, 2, 1},		// 4
+		{2, 7, 1},		// 5
+		{2, 7, 3},		// 6
+		{3, 1, 0},		// 7
+		{3, 7, 3},		// 8
+		{3, 7, 1},		// 9
+		{0, 2, 0},		// a
+		{0, 7, 3},		// b
+		{0, 5, 3},		// c
+		{0, 6, 0},		// d
+		{2, 6, 2},		// e
+		{0, 0, 0}		// f
+};
+
 void process_SPI(U8 iplfl){
+	U16	ii;
+	U8	sdata;
+	U8	csf1;
+	U8	csf2;
+	U8	swdat;
+
+	if(iplfl){
+		// IPL init
+	}
+	if(got_ssi0()){
+		ii = get_ssi0();
+		sdata = (U8)ii;
+		if(sdata & 0xf0){
+			swdat = sdata & 0xf0;				// mask off data/addr
+		}else{
+			swdat = sdata;
+		}
+		csf1 = (U8)(ii >> 8) & CS1;
+		csf2 = (U8)(ii >> 8) & CS2;
+		switch(swdat){
+		default:
+			break;
+
+		case WITH_DECODE:
+			if(csf1) CS1_reg |= CS_DECODE7;
+			if(csf2) CS2_reg |= CS_DECODE7;
+			break;
+
+		case WITHOUT_DECODE:
+			if(csf1) CS1_reg &= ~CS_DECODE7;
+			if(csf2) CS2_reg &= ~CS_DECODE7;
+			break;
+
+		case LOAD_PTR:
+		case LOAD_PTR2:
+			if(csf1) cs1_idx = sdata & AMASK;
+			if(csf1) cs2_idx = sdata & AMASK;
+			break;
+
+		case WR_DMEM:
+			if(csf1){
+				if(CS1_reg & CS_DECODE7){
+					CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY;
+					CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY;
+					CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY;
+					cs1_idx += 3;
+					if(cs1_idx > 0x1f) cs1_idx = 0;
+				}else{
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+				}
+			}
+			if(csf2){
+				if(CS2_reg & CS_DECODE7){
+					CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY;
+					CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY;
+					CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY;
+					cs2_idx += 3;
+					if(cs2_idx > 0x1f) cs2_idx = 0;
+				}else{
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY;
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
+				}
+			}
+			break;
+
+		case OR_DMEM:
+			if(csf1){
+				if(CS1_reg & CS_DECODE7){
+					CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_OR;
+					CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_OR;
+					CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_OR;
+					cs1_idx += 3;
+					if(cs1_idx > 0x1f) cs1_idx = 0;
+				}else{
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+				}
+			}
+			if(csf2){
+				if(CS2_reg & CS_DECODE7){
+					CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_OR;
+					CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_OR;
+					CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_OR;
+					cs2_idx += 3;
+					if(cs2_idx > 0x1f) cs2_idx = 0;
+				}else{
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR;
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
+				}
+			}
+			break;
+
+		case AND_DMEM:
+			if(csf1){
+				if(CS1_reg & CS_DECODE7){
+					CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_AND;
+					CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_AND;
+					CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_AND;
+					cs1_idx += 3;
+					if(cs1_idx > 0x1f) cs1_idx = 0;
+				}else{
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+				}
+			}
+			if(csf2){
+				if(CS2_reg & CS_DECODE7){
+					CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_AND;
+					CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_AND;
+					CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_AND;
+					cs2_idx += 3;
+					if(cs2_idx > 0x1f) cs2_idx = 0;
+				}else{
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND;
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
+				}
+			}
+			break;
+
+		case CLR_DMEM:
+			if(csf1){
+				if(CS1_reg & CS_DECODE7){
+					CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY;
+					CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY;
+					CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY;
+					cs1_idx += 3;
+					if(cs1_idx > 0x1f) cs1_idx = 0;
+				}else{
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+				}
+			}
+			if(csf2){
+				if(CS2_reg & CS_DECODE7){
+					CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY;
+					CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY;
+					CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY;
+					cs2_idx += 3;
+					if(cs2_idx > 0x1f) cs2_idx = 0;
+				}else{
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY;
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
+				}
+			}
+			break;
+			////////////
+
+		case WR_BMEM:
+			if(csf1){
+				if(CS1_reg & CS_DECODE7){
+					CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | BLINKFL;
+					CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | BLINKFL;
+					CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | BLINKFL;
+					cs1_idx += 3;
+					if(cs1_idx > 0x1f) cs1_idx = 0;
+				}else{
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+				}
+			}
+			if(csf2){
+				if(CS2_reg & CS_DECODE7){
+					CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | BLINKFL;
+					CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | BLINKFL;
+					CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | BLINKFL;
+					cs2_idx += 3;
+					if(cs2_idx > 0x1f) cs2_idx = 0;
+				}else{
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL;
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
+				}
+			}
+			break;
+
+		case OR_BMEM:
+			if(csf1){
+				if(CS1_reg & CS_DECODE7){
+					CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_OR | BLINKFL;
+					CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_OR | BLINKFL;
+					CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_OR | BLINKFL;
+					cs1_idx += 3;
+					if(cs1_idx > 0x1f) cs1_idx = 0;
+				}else{
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR | BLINKFL;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+				}
+			}
+			if(csf2){
+				if(CS2_reg & CS_DECODE7){
+					CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_OR | BLINKFL;
+					CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_OR | BLINKFL;
+					CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_OR | BLINKFL;
+					cs2_idx += 3;
+					if(cs2_idx > 0x1f) cs2_idx = 0;
+				}else{
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR | BLINKFL;
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
+				}
+			}
+			break;
+
+		case AND_BMEM:
+			if(csf1){
+				if(CS1_reg & CS_DECODE7){
+					CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_AND | BLINKFL;
+					CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_AND | BLINKFL;
+					CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_AND | BLINKFL;
+					cs1_idx += 3;
+					if(cs1_idx > 0x1f) cs1_idx = 0;
+				}else{
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND | BLINKFL;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+				}
+			}
+			if(csf2){
+				if(CS2_reg & CS_DECODE7){
+					CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_AND | BLINKFL;
+					CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_AND | BLINKFL;
+					CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_AND | BLINKFL;
+					cs2_idx += 3;
+					if(cs2_idx > 0x1f) cs2_idx = 0;
+				}else{
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND | BLINKFL;
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
+				}
+			}
+			break;
+
+		case CLR_BMEM:
+			if(csf1){
+				if(CS1_reg & CS_DECODE7){
+					CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | BLINKFL;
+					CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | BLINKFL;
+					CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | BLINKFL;
+					cs1_idx += 3;
+					if(cs1_idx > 0x1f) cs1_idx = 0;
+				}else{
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+				}
+			}
+			if(csf2){
+				if(CS2_reg & CS_DECODE7){
+					CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | BLINKFL;
+					CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | BLINKFL;
+					CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | BLINKFL;
+					cs2_idx += 3;
+					if(cs2_idx > 0x1f) cs2_idx = 0;
+				}else{
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL;
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
+				}
+			}
+			break;
+
+		}
+	}
 
 	return;
 }
@@ -313,7 +604,7 @@ void clear_all(void){
 }
 
 //-----------------------------------------------------------------------------
-// disp_err1() displays spi overflow error
+// disp_err() displays system errors on bottom edge of LCD
 //-----------------------------------------------------------------------------
 void disp_err(U8 mnum){
 	U8	i;
@@ -334,7 +625,7 @@ void disp_err(U8 mnum){
 			if(mnum == 2) wrdb(err2[j][i], LCDDATA, STA23);	// pixel address
 		}
 		wrdb(0xB2, LCDCMD, STA01);							// auto write OFF
-		addr += 30;
+		addr += DROW;
 	}
 	return;
 }

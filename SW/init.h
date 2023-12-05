@@ -158,6 +158,8 @@
 #define CS2				0x20		// in
 #define CS1				0x40		// in
 #define sparePA7		0x80		// in
+
+#define	DRF				0x80		// datareg full flag for SPI buffer (needs to be a bitmap other than CS1 or CS2)
 #define PORTA_DIRV		(TXD0)
 #define	PORTA_DENV		(0xff)
 #define	PORTA_PURV		(SCLK|CS1|MOSI|CS2|CSS|sparePA7)

@@ -43,7 +43,7 @@ U8	ssi0_statreg;			// SPI global status
 // ******************************************************************
 // ***** START OF CODE ***** //
 
-//***************
+//////////////////
 // init_ssi0 initializes SSI0 as an 8-bit slave
 //
 void init_ssi0(void)
@@ -71,7 +71,28 @@ void init_ssi0(void)
 	return;
 }
 
-//***************
+//////////////////
+// got_ssi0 returns true if buffer has data
+//
+U8 got_ssi0(void){
+
+	if(ssi0_h != ssi0_t) return 1;
+	return 0;
+}
+
+//////////////////
+// get_ssi0 returns true if buffer has data
+//
+U16 get_ssi0(void){
+	U16	ii;
+
+	ii = (U16)ssi0_status[ssi0_t] << 8;
+	ii |= (U16)ssi0_buf[ssi0_t++] & 0xff;
+	if(++ssi0_t == SPI_LEN) ssi0_t = 0;
+	return ii;
+}
+
+//////////////////
 // ssi0_isr pushes data into SPI buffer
 //
 
@@ -79,7 +100,7 @@ void ssi0_isr(void){
 
 	while(SSI0_MIS_R){										// clear data buffer
 		ssi0_buf[ssi0_h] = SSI0_DR_R;						// get data, place in buff
-		ssi0_status[ssi0_h] = GPIO_PORTA_DATA_R;			// get CS status, place in buff
+		ssi0_status[ssi0_h] = GPIO_PORTA_DATA_R & (DRF|CS2|CS1); // get CS status, place in stat buff
 		if(++ssi0_h == SPI_LEN) ssi0_h = 0;
 	}
 	if(ssi0_h == ssi0_t){

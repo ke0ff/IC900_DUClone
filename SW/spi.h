@@ -45,6 +45,10 @@
 //-----------------------------------------------------------------------------
 
 void init_ssi0(void);
+U8 got_ssi0(void);
+U16 get_ssi0(void);
+void ssi0_isr(void);
+
 /*uint8_t send_spi3(uint8_t data);
 int put_spi(const U8 *string, U8 mode);
 void open_spi(uint8_t addr);
@@ -62,6 +66,5 @@ U16 rw16_nvr(U32 addr, U16 dataw, U8 mode);
 U32 rw32_nvr(U32 addr, U32 dataw, U8 mode);
 void rwusn_nvr(U8* dptr, U8 mode);
 void Timer1B_ISR(void);*/
-void ssi0_isr(void);
 
 #endif /* SPI_H_ */

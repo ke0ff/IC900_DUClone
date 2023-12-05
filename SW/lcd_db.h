@@ -143,6 +143,8 @@ extern	U8	subsm[];		// sub smet row
 extern	U8	optrow[];		// opt row
 #endif
 
+// LCD parallel port defines
+// macro to swap even/odd bits -- temp patch until hardware can get fixed
 #define	swapeo(data) (((data << 1) & 0xaa) | ((data >> 1) & 0x55))
 
 #define	LCDCMD		TADDR	//0x01
@@ -177,7 +179,8 @@ extern	U8	optrow[];		// opt row
 #define	MEMD1		0x02			// [2:0] correspond to uPD7225 mem bits
 #define	MEMD2		0x04
 #define	BIT_MASK	(MEMD0|MEMD1|MEMD2)
-#define	MEM_MODE0	0x20			// (trig) mem mode, 0x20==OR, 0x40==AND, 0x60==WR
+#define	DATA_RDY	0x10			// data ready
+#define	MEM_MODE0	0x20			// (trig) mem mode, 0x20==OR, 0x40==AND, 0x60==WR, 00==CLR
 #define	MEM_MODE1	0x40
 #define	MODE_OR		0x20
 #define	MODE_AND	0x40
@@ -200,7 +203,10 @@ extern	U8	optrow[];		// opt row
 #define	DISP_OFF	0x10			// blank disp
 #define	WITH_DECODE	0x15			// 7-seg decode
 #define	WITHOUT_DECODE	0x14		// no decode
-#define	LOAD_PTR	0xE0			// OR with (0x1f masked address)
+#define	LOAD_PTR	0xE0			// OR with 0x1f (masked address)
+#define	LOAD_PTR2	0xF0			// switch alternate
+#define	AMASK		0x1F			// address mask
+#define	DMASK		0x0F			// data mask
 #define	WR_DMEM		0xD0			// write with (0x0f masked data)
 #define	OR_DMEM		0xB0			// OR with (0x0f masked data)
 #define	AND_DMEM	0x90			// AND with (0x0f masked data)
@@ -208,7 +214,7 @@ extern	U8	optrow[];		// opt row
 #define	WR_BMEM		0xC0			// write with (0x0f masked data)
 #define	OR_BMEM		0xA0			// OR with (0x0f masked data)
 #define	AND_BMEM	0x80			// AND with (0x0f masked data)
-#define	CLR_BMEM	0x00			// clear blink. mem
+#define	CLR_BMEM	0x00			// clear blink. mem*/
 
 #define	MAX_SRF		7				// #srf bargraph segments
 #define	MSMET_ADDR	0x06

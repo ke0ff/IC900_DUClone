@@ -14,11 +14,23 @@
  *  Project scope rev notes:
  *  !! The TI datasheet lies !! UART: configuring 2 stop bits requires 2 stop bits for RX also
  *
- *  Pieces are comming together.  Got basic LCD ram->display mechanism working.  Starting to add SPI stuff.
- *  Need to code LCD commands and work out the processing of the the SPI buffer.
+ *  Summary
+ *  This project produces an LCD display that is form-fit-function interchangeable with the LCD system used
+ *  on the IC-900 Remote Controller.  The Tiva captures SPI messages from the host to the uPD7225 LCD interface
+ *  ICs (two are used for the IC-900), interprets the commands/data, and uses them to drive graphic patterns
+ *  on a dot-matrix LCD display.
+ *
+ *  The LCD used here is a 240x128, parallel bus, monochrome display offered by NewHaven, P/N NHD-240128WG-ATMI-VZ#
+ *
  *
  *
  *    Project scope rev History:
+ *    12-04-23 jmh:  In-process code-n-test.
+ *					Pieces are coming together.  Got basic LCD ram->display mechanism working.  Starting to add
+ *						SPI stuff. Need to code LCD commands and work out the processing of the the SPI buffer.
+ *					Added process_SPI with most of a dispatch switch to process SPI comds/data (need a scrub and DVT run)
+ *					!!!! Need to update "void trig_scan?(U8 mode)" to cover the "clear" case !!!!
+ *
  *    11-21-23 jmh:  creation date
  *    				 <VERSION 0.0>
  *
@@ -30,18 +42,23 @@
 //  UART0 is used for debug I/O.
 //
 //  Debug CLI is a simple maintenance/debug port (via UART1 @PB[1:0]) with the following core commands:
-//		VERS - interrogate SW version.
+//		? - help
+//		VERS - interrogate SW version
+//		LT - LCD Test cmd
 //		See "cmd_fn.c" for CLI details
 //
 //	Uses GPIO to drive LCD 8-bit bus I/O
 //
-//	SSI0 grabs LCD SPI data
+//	SSI0 inputs LCD SPI data (RX only)
+//
+//	GPIO is used for the LCD parallel interface.  PB = bi-directional 8-bit port, PE = interface lines for 8b port,
+//		and 2 GPIOs on port D to drive mode signals to the LCD.
 //
 //  Interrupt Resource Map:
 //	*	Timer3A			--			app timer
-//	*	SSI0			PA2/4:		LCD SPI
-//	*	UART0 			PA[1:0]:	ISR(RX) debug serial port
-//	*	M1PWM (4)		PF1:		LED PWM
+//	*	SSI0			PA2/4:		LCD interface ICs (uPD7225) SPI
+//	*	UART0 			PA[1:0]:	ISR(RX/TX) debug serial port
+//	*	M1PWM (4)		PF1:		LED PWM to drive LCD backlight
 //		ADC0			PD2:		Ambient light sensor
 //
 //
@@ -86,12 +103,12 @@
 
 
 // quick beep macro
-#define	q_beep   beep_counter = beep_count; \
+/*#define	q_beep   beep_counter = beep_count; \
 				 TIMER0_CTL_R |= (TIMER_CTL_TAEN);
 
 // dial beep macro
 #define	d_beep   beep_counter = DIAL_BEEP_COUNT; \
-				 TIMER0_CTL_R |= (TIMER_CTL_TAEN);
+				 TIMER0_CTL_R |= (TIMER_CTL_TAEN);*/
 
 //-----------------------------------------------------------------------------
 // Local Variables
@@ -158,7 +175,7 @@ U8		hib_access;						// HIB intrpt lock-out flag
 void Timer_Init(void);
 void Timer_SUBR(void);
 char *gets_tab(char *buf, char *save_buf[3], int n);
-char kp_asc(U16 keycode);
+//char kp_asc(U16 keycode);
 
 //*****************************************************************************
 // main()
