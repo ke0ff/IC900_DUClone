@@ -330,7 +330,6 @@ volatile	char	ps = FALSE;				// S flag, SUB (set if "-S" found in args)
 volatile	char	pc = FALSE;				// C flag (set if "-C" found in args)
 volatile	char	pw = FALSE;				// W flag (set if "-W" found in args)
 volatile	char	px = FALSE;				// X flag (set if "-X" found in args)
-//volatile	char	ps = FALSE;				// s flag (set if <wsp>-S<wsp> found in args)
 volatile	char	pv = FALSE;				// V flag (set if <wsp>-V<wsp> found in args)
 volatile	char	pr = FALSE;				// R flag (set if <wsp>-R<wsp> found in args)
 	int		cmd_found = TRUE;		// default to true, set to false if no valid cmd identified
@@ -526,47 +525,69 @@ volatile	char	pr = FALSE;				// R flag (set if <wsp>-R<wsp> found in args)
 
 				case lcd_tst:													// debug, LCD test
 //					lcd_test();
-					if(pr || pv){
-						if(pr){
-							disp_err(1);
-							putsQ("LCD err1");
+					if(ps){
+						obuf[0] = LOAD_PTR | 0x0a;
+						obuf[1] = WITH_DECODE;
+						obuf[2] = 0;
+						obuf[3] = 0;
+						obuf[4] = 0;
+						obuf[5] = 2;
+						obuf[6] = 9;
+						obuf[7] = 2;
+						obuf[8] = WITHOUT_DECODE;
+						obuf[9] = LOAD_PTR | 0x1c;
+						obuf[10] = WR_DMEM | 0x01;
+						dbg_spirx((U8*)obuf, 11, 1);
+						putsQ("spi dvt, ESC to quit...");
+						for(i=0; i<15; i++){
+							process_SPI(0);
 						}
-						if(pv){
-							disp_err(2);
-							putsQ("LCD err2");
+						while(bchar != ESC){
+							process_LCD(0);
 						}
 					}else{
-						params[0] = 0xffff;
-						params[1] = 0xffff;
-						params[2] = 0;
-						get_Dargs(1, nargs, args, params);						// parse param numerics into params[] array
-						i = 1;
-						if(params[0]>31){
-							params[0] -= 32;
-							i = 2;
+						if(pr || pv){
+							if(pr){
+								disp_err(1);
+								putsQ("LCD err1");
+							}
+							if(pv){
+								disp_err(2);
+								putsQ("LCD err2");
+							}
+						}else{
+							params[0] = 0xffff;
+							params[1] = 0xffff;
+							params[2] = 0;
+							get_Dargs(1, nargs, args, params);						// parse param numerics into params[] array
+							i = 1;
+							if(params[0]>31){
+								params[0] -= 32;
+								i = 2;
+							}
+							switch(params[2]){
+							case 1:
+								j = MODE_OR;
+								break;
+
+							case 2:
+								j = MODE_AND;
+								break;
+
+							default:
+								j = MODE_WR;
+							}
+							trig_fill((U8)params[0], j | (U8)params[1], i);							// 1
+
+							trig_scan1(MODE_OR);
+							trig_scan2(MODE_OR);
+							wrlcd_str(main7, MAIN7_LEN, MAIN7_OFFS);
+							wrlcd_str(sub7, SUB7_LEN, SUB7_OFFS);
+							wrlcd_str(mainsm, MAINSM_LEN, MAINSM_OFFS);
+							wrlcd_str(optrow, OPTROW_LEN, OPTROW_OFFS);
+							wrlcd_str(subsm, SUBSM_LEN, SUBSM_OFFS);
+							putsQ("LCD test.");
 						}
-						switch(params[2]){
-						case 1:
-							j = MODE_OR;
-							break;
-
-						case 2:
-							j = MODE_AND;
-							break;
-
-						default:
-							j = MODE_WR;
-						}
-						trig_fill((U8)params[0], j | (U8)params[1], i);							// 1
-
-						trig_scan1(MODE_OR);
-						trig_scan2(MODE_OR);
-						wrlcd_str(main7, MAIN7_LEN, MAIN7_OFFS);
-						wrlcd_str(sub7, SUB7_LEN, SUB7_OFFS);
-						wrlcd_str(mainsm, MAINSM_LEN, MAINSM_OFFS);
-						wrlcd_str(optrow, OPTROW_LEN, OPTROW_OFFS);
-						wrlcd_str(subsm, SUBSM_LEN, SUBSM_OFFS);
-						putsQ("LCD test.");
 					}
 					break;
 

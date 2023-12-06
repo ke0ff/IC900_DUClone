@@ -71,6 +71,20 @@ void init_ssi0(void)
 	return;
 }
 
+void dbg_spirx(U8* sptr, U8 len, U8 buf){
+	U8	i;
+
+	for(i=0; i<len; i++){
+		ssi0_buf[i] = *sptr++;
+		if(buf==1){
+			ssi0_status[i] = CS1;
+		}else{
+			ssi0_status[i] = CS2;
+		}
+	}
+	ssi0_t = 0;
+	ssi0_h = len;
+}
 //////////////////
 // got_ssi0 returns true if buffer has data
 //

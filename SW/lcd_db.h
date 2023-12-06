@@ -178,7 +178,8 @@ extern	U8	optrow[];		// opt row
 #define	MEMD0		0x01			// segment bitfields
 #define	MEMD1		0x02			// [2:0] correspond to uPD7225 mem bits
 #define	MEMD2		0x04
-#define	BIT_MASK	(MEMD0|MEMD1|MEMD2)
+#define	MEMD3		0x08
+#define	BIT_MASK	(MEMD0|MEMD1|MEMD2|MEMD3)
 #define	DATA_RDY	0x10			// data ready
 #define	MEM_MODE0	0x20			// (trig) mem mode, 0x20==OR, 0x40==AND, 0x60==WR, 00==CLR
 #define	MEM_MODE1	0x40

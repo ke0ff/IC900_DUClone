@@ -44,6 +44,9 @@
 // Global Fns
 //-----------------------------------------------------------------------------
 
+void dbg_spirx(U8* sptr, U8 len, U8 buf);
+
+
 void init_ssi0(void);
 U8 got_ssi0(void);
 U16 get_ssi0(void);
