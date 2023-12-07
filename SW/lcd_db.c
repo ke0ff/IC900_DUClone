@@ -280,66 +280,25 @@ void process_SPI(U8 iplfl){
 	if(iplfl){
 		// IPL init
 	}
-	if(got_ssi0()){
+	while(got_ssi0()){
 		ii = get_ssi0();
 		sdata = (U8)ii;
-		csf1 = (U8)(ii >> 8) & CS1;
-		csf2 = (U8)(ii >> 8) & CS2;
-		if((CS1_reg & CS_DECODE7) && csf1){
-			sdata |= WR_DMEM;					// if decode enabled, force write
+		i = (U8)(ii >> 8);
+		csf1 = i & CS1;
+		csf2 = i & CS2;
+
+		// if decoder, set up for write
+		if(!(sdata & 0xf0)){
+			if((csf1) && (CS1_reg & CS_DECODE7)) sdata |= WR_DMEM;
+			if((csf2) && (CS2_reg & CS_DECODE7)) sdata |= WR_DMEM;
 		}
-		if((CS2_reg & CS_DECODE7) && csf2){
-			sdata |= WR_DMEM;					// if decode enabled, force write
-		}
-		j = 1;
-		switch(sdata){
-		default:
-			break;
 
-		case WITH_DECODE:
-			if(csf1) CS1_reg |= CS_DECODE7;
-			if(csf2) CS2_reg |= CS_DECODE7;
-			j = 0;
-			break;
-
-		case WITHOUT_DECODE:
-			if(csf1) CS1_reg &= ~CS_DECODE7;
-			if(csf2) CS2_reg &= ~CS_DECODE7;
-			j = 0;
-			break;
-
-		case CLR_DMEM:
-			for(i=0; i<0x1f; i++){
-				if(csf1){
-					CS1_trig[i] = 0x0f;
-				}
-				if(csf2){
-					CS2_trig[i] = 0x0f;
-				}
-			}
-			j = 0;
-			break;
-
-		case CLR_BMEM:
-			for(i=0; i<0x1f; i++){
-				if(csf1){
-					CS1_trig[i] = 0x0f | BLINKFL;
-				}
-				if(csf2){
-					CS2_trig[i] = 0x0f | BLINKFL;
-				}
-			}
-			j = 0;
-			break;
-		}
-		if(j){
-			if(sdata & 0xf0){
-				swdat = sdata & 0xf0;				// mask off data/addr
-			}else{
-				swdat = sdata;
-			}
-
+		if(sdata & 0x80){						// is a parametric command?
+			swdat = sdata & 0xf0;				// mask off data/addr
 			switch(swdat){
+			default:
+				break;
+
 			case LOAD_PTR:
 			case LOAD_PTR2:
 				if(csf1) cs1_idx = sdata & AMASK;
@@ -349,25 +308,25 @@ void process_SPI(U8 iplfl){
 			case WR_DMEM:
 				if(csf1){
 					if(CS1_reg & CS_DECODE7){
-						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY;
-						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY;
-						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY;
+						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY| MODE_WR;
+						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY| MODE_WR;
+						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY| MODE_WR;
 						cs1_idx += 3;
 						if(cs1_idx > 0x1f) cs1_idx = 0;
 					}else{
-						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY;
+						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY| MODE_WR;
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
 					}
 				}
 				if(csf2){
 					if(CS2_reg & CS_DECODE7){
-						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY;
-						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY;
-						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY;
+						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY| MODE_WR;
+						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY| MODE_WR;
+						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY| MODE_WR;
 						cs2_idx += 3;
 						if(cs2_idx > 0x1f) cs2_idx = 0;
 					}else{
-						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY;
+						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY| MODE_WR;
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
 					}
 				}
@@ -426,57 +385,30 @@ void process_SPI(U8 iplfl){
 					}
 				}
 				break;
-
-	/*		case CLR_DMEM:
-				if(csf1){
-					if(CS1_reg & CS_DECODE7){
-						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY;
-						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY;
-						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY;
-						cs1_idx += 3;
-						if(cs1_idx > 0x1f) cs1_idx = 0;
-					}else{
-						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY;
-						if(++cs1_idx > 0x1f) cs1_idx = 0;
-					}
-				}
-				if(csf2){
-					if(CS2_reg & CS_DECODE7){
-						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY;
-						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY;
-						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY;
-						cs2_idx += 3;
-						if(cs2_idx > 0x1f) cs2_idx = 0;
-					}else{
-						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY;
-						if(++cs2_idx > 0x1f) cs2_idx = 0;
-					}
-				}
-				break;*/
 				////////////
 
 			case WR_BMEM:
 				if(csf1){
 					if(CS1_reg & CS_DECODE7){
-						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | BLINKFL;
-						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | BLINKFL;
-						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | BLINKFL;
+						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | BLINKFL| MODE_WR;
+						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | BLINKFL| MODE_WR;
+						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | BLINKFL| MODE_WR;
 						cs1_idx += 3;
 						if(cs1_idx > 0x1f) cs1_idx = 0;
 					}else{
-						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL;
+						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL| MODE_WR;
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
 					}
 				}
 				if(csf2){
 					if(CS2_reg & CS_DECODE7){
-						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | BLINKFL;
-						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | BLINKFL;
-						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | BLINKFL;
+						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | BLINKFL| MODE_WR;
+						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | BLINKFL| MODE_WR;
+						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | BLINKFL| MODE_WR;
 						cs2_idx += 3;
 						if(cs2_idx > 0x1f) cs2_idx = 0;
 					}else{
-						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL;
+						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL| MODE_WR;
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
 					}
 				}
@@ -535,38 +467,46 @@ void process_SPI(U8 iplfl){
 					}
 				}
 				break;
+			}
+		}else{
+			switch(sdata){
+			default:
+				break;
 
-	/*		case CLR_BMEM:
-				if(csf1){
-					if(CS1_reg & CS_DECODE7){
-						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | BLINKFL;
-						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | BLINKFL;
-						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | BLINKFL;
-						cs1_idx += 3;
-						if(cs1_idx > 0x1f) cs1_idx = 0;
-					}else{
-						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL;
-						if(++cs1_idx > 0x1f) cs1_idx = 0;
+			case WITH_DECODE:
+				if(csf1) CS1_reg |= CS_DECODE7;
+				if(csf2) CS2_reg |= CS_DECODE7;
+				break;
+
+			case WITHOUT_DECODE:
+				if(csf1) CS1_reg &= ~CS_DECODE7;
+				if(csf2) CS2_reg &= ~CS_DECODE7;
+				break;
+
+			case CLR_DMEM:
+				for(i=0; i<0x1f; i++){
+					if(csf1){
+						CS1_trig[i] = 0x0f;
+					}
+					if(csf2){
+						CS2_trig[i] = 0x0f;
 					}
 				}
-				if(csf2){
-					if(CS2_reg & CS_DECODE7){
-						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | BLINKFL;
-						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | BLINKFL;
-						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | BLINKFL;
-						cs2_idx += 3;
-						if(cs2_idx > 0x1f) cs2_idx = 0;
-					}else{
-						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL;
-						if(++cs2_idx > 0x1f) cs2_idx = 0;
+				break;
+
+			case CLR_BMEM:
+				for(i=0; i<0x1f; i++){
+					if(csf1){
+						CS1_trig[i] = 0x0f | BLINKFL;
+					}
+					if(csf2){
+						CS2_trig[i] = 0x0f | BLINKFL;
 					}
 				}
-				break;*/
-
+				break;
 			}
 		}
 	}
-
 	return;
 }
 
@@ -640,6 +580,8 @@ void clear_all(void){
 		CS2_dmem[i] = 0;
 		CS2_bmem[i] = 0;
 	}
+	CS1_reg = 0;
+	CS2_reg = 0;
 	change_flag = 0;
 	return;
 }
@@ -4878,6 +4820,7 @@ void trig_scan1(U8 mode){
 				}
 			}
 		}
+		CS1_trig[i] = 0;
 	}
 }
 
@@ -4922,6 +4865,7 @@ void trig_scan2(U8 mode){
 				}
 			}
 		}
+		CS2_trig[i] = 0;
 	}
 }
 

@@ -101,7 +101,7 @@ U16 get_ssi0(void){
 	U16	ii;
 
 	ii = (U16)ssi0_status[ssi0_t] << 8;
-	ii |= (U16)ssi0_buf[ssi0_t++] & 0xff;
+	ii |= (U16)ssi0_buf[ssi0_t] & 0xff;
 	if(++ssi0_t == SPI_LEN) ssi0_t = 0;
 	return ii;
 }

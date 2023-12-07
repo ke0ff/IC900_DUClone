@@ -526,6 +526,7 @@ volatile	char	pr = FALSE;				// R flag (set if <wsp>-R<wsp> found in args)
 				case lcd_tst:													// debug, LCD test
 //					lcd_test();
 					if(ps){
+//						process_LCD(0xff);
 						obuf[0] = LOAD_PTR | 0x0a;
 						obuf[1] = WITH_DECODE;
 						obuf[2] = 0;
