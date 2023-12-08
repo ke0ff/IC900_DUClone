@@ -80,9 +80,9 @@
 #define	MSMET6_ADDR	(MSMET5_ADDR+SM5SYM_X-1)
 #define	MSMET7_ADDR	(MSMET6_ADDR+SM6SYM_X-1)
 
-#define	UP_ADDR		0
-#define	OPT_ADDR	(UP_ADDR+1)
-#define	DN_ADDR		(OPT_ADDR+4-1)
+#define	DN_ADDR		0
+#define	OPT_ADDR	(DN_ADDR+1)
+#define	UP_ADDR		(OPT_ADDR+4-1)
 #define	VXO_ADDR	(0)
 #define	RIT_ADDR	(VXO_ADDR+OWSYM_X-1)
 #define	OPTA_ADDR	(RIT_ADDR+4)

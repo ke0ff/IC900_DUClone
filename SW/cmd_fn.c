@@ -525,6 +525,37 @@ volatile	char	pr = FALSE;				// R flag (set if <wsp>-R<wsp> found in args)
 
 				case lcd_tst:													// debug, LCD test
 //					lcd_test();
+					if(px){
+						putsQ("every seg spi dvt, CS1:");
+						i = 0;
+						j = 1;
+						k = 1;
+						do{
+							bchar = '\0';
+							obuf[0] = LOAD_PTR | i;
+							obuf[1] = WITHOUT_DECODE;
+							obuf[2] = WR_DMEM | j;
+							dbg_spirx((U8*)obuf, 3, k);
+							sprintf(obuf,"seg %d: %02x  %d", k, i, j);
+							putsQ(obuf);
+							process_SPI(0);
+							while((bchar != 'a') && (bchar != ESC)){
+								process_LCD(0);
+							}
+							j = (j << 1) | 1;
+							if(j>7){
+								j = 1;
+								i++;
+							}
+							if(i > 0x1f){
+								i = 0;
+								if(k == 1) k = 2;
+								else k = 1;
+							}
+						}while(bchar != ESC);
+						break;
+
+					}
 					if(ps){
 //						process_LCD(0xff);
 						obuf[0] = LOAD_PTR | 0x0a;

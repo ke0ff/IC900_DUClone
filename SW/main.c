@@ -25,11 +25,14 @@
  *
  *
  *    Project scope rev History:
- *    12-04-23 jmh:  In-process code-n-test.
- *					Pieces are coming together.  Got basic LCD ram->display mechanism working.  Starting to add
+ *    In-process code-n-test.
+ *    12-07-23:		Ran a full segment unit test from a simulated SPI stream capture to LCD display.  Debugged
+ *    					a couple of issues to get the CS1 and CS2 paths functional and all segments tested/verified.
+ *    12-06-23:		Added CMD/DATA gpio to capture status of this "address" signal by SPI.
+ *    				Preliminary unit test of SPI buffer data flow to LCD display was successful (after some debug).
+ *	  12-04-23		Pieces are coming together.  Got basic LCD ram->display mechanism working.  Starting to add
  *						SPI stuff. Need to code LCD commands and work out the processing of the the SPI buffer.
  *					Added process_SPI with most of a dispatch switch to process SPI comds/data (need a scrub and DVT run)
- *					!!!! Need to update "void trig_scan?(U8 mode)" to cover the "clear" case !!!!
  *
  *    11-21-23 jmh:  creation date
  *    				 <VERSION 0.0>
@@ -137,11 +140,13 @@ S8		xoffsent;						// xoff sent
 char	got_cmd;						// first valid cmd flag (freezes baud rate)
 U32		abaud;							// 0 = 115.2kb (the default)
 U8		iplt2;							// timer2 ipl flag
-U8		btredir;						// bluetooth cmd re-direct flag
+//U8		btredir;						// bluetooth cmd re-direct flag
 U16		waittimer;						// gp wait timer
 U16		waittimer2;						// gp wait timer
 U16		ipl_timer;						// ipl timeout timer
 U8		cmdtimer;						// cmd_ln GP timer
+U16		blinktimer;						// blink regs
+U8		blinkfl;
 
 U32		free_32;						// free-running ms timer
 S8		err_led_stat;					// err led status
@@ -243,7 +248,7 @@ int main(void){
         set_led(6, 1);
         set_pwm(6, 10);
     	process_IO(PROC_INIT);							// init process_io
-    	btredir = 0;
+//    	btredir = 0;
 //    	sprintf(buf,"NVsrt %0x, NVend %0x", NVRAM_BASE, MEM_END);
 //    	putsQ(buf);
     	// GPIO init
@@ -506,11 +511,11 @@ volatile	char	q = 0;
 //		if(c != BT_LN) last_chr = c;					// set last chr
     } while((c != '\r') && (c != '\n') && (i < CLI_BUFLEN) && (c != BT_LN));		// loop until c/r or l/f or buffer full
     if(c == BT_LN){
-    	if(btredir){
-    		buf = get_btptr();
-    	}else{
+//    	if(btredir){
+//    		buf = get_btptr();
+//    	}else{
 //        		process_CCMD(0);
-    	}
+//    	}
     }else{
     	if(i >= CLI_BUFLEN){
     		putsQ("#! buffer overflow !$");
@@ -908,6 +913,18 @@ U32 get_free(void){
 }
 
 //-----------------------------------------------------------------------------
+// is_blink() returns true if blink timer lsb is true
+//-----------------------------------------------------------------------------
+U8 is_blink(void){
+
+	if(blinkfl){
+		blinkfl = 0;
+		return 1;
+	}
+	return 0;
+}
+
+//-----------------------------------------------------------------------------
 // Timer3A_ISR
 // Called when timer3 A overflows (NORM mode):
 //	intended to update app timers @ 1ms per lsb
@@ -925,6 +942,8 @@ static	U32	prescale;				// prescales the ms rate to the slow timer rates
 		free_32 = 0;
 		waittimer = 0;				// gp wait timer
 		prescale = 0;				// init resp led regs
+		blinktimer = BLINK_TIME;
+		blinkfl = 0;
 	}
 	// process app timers
 	free_32++;											// update large free-running timer
@@ -933,6 +952,10 @@ static	U32	prescale;				// prescales the ms rate to the slow timer rates
 	}
 	if (waittimer2 != 0){								// update wait2 timer
 		waittimer2--;
+	}
+	if (--blinktimer == 0){								// update blink timer
+		blinkfl = 1;
+		blinktimer = BLINK_TIME;
 	}
 	// process 10ms timers
 	if(++prescale >= PRESCALE_TRIGGER){

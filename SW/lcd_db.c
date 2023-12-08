@@ -170,7 +170,8 @@ U8 err2[7][5] = {
 // process_LCD() handles lcd updates
 //-----------------------------------------------------------------------------
 void process_LCD(U8 iplfl){
-	U8	i;
+			U8	i;
+	static	U8	blinker;
 
 	if(iplfl){
 		// initialize LCD and internals
@@ -180,6 +181,10 @@ void process_LCD(U8 iplfl){
 		clear_all();
 		// force update
 		change_flag = MAIN7_FL|SUB7_FL|MAINSM_FL|SUBSM_FL|OPTROW_FL;
+		blinker = 0;
+	}
+	if(is_blink()){
+		// process blink
 	}
 	// if timer expired and change_flag has set bits, update LCD
 	trig_scan1(MODE_OR);
@@ -275,7 +280,7 @@ void process_SPI(U8 iplfl){
 	U8	csf2;
 	U8	swdat;
 	U8	i;
-	U8	j;
+	U8	datcmd;
 
 	if(iplfl){
 		// IPL init
@@ -286,15 +291,16 @@ void process_SPI(U8 iplfl){
 		i = (U8)(ii >> 8);
 		csf1 = i & CS1;
 		csf2 = i & CS2;
+		datcmd = i & DATA_CMD;
 
-		// if decoder, set up for write
-		if(!(sdata & 0xf0)){
+		// if data & decode7, set up for write
+		if(datcmd){
+			sdata &= 0x0f;
 			if((csf1) && (CS1_reg & CS_DECODE7)) sdata |= WR_DMEM;
 			if((csf2) && (CS2_reg & CS_DECODE7)) sdata |= WR_DMEM;
 		}
-
 		if(sdata & 0x80){						// is a parametric command?
-			swdat = sdata & 0xf0;				// mask off data/addr
+			swdat = sdata & 0xf0;				// mask off data to get command
 			switch(swdat){
 			default:
 				break;
@@ -302,31 +308,31 @@ void process_SPI(U8 iplfl){
 			case LOAD_PTR:
 			case LOAD_PTR2:
 				if(csf1) cs1_idx = sdata & AMASK;
-				if(csf1) cs2_idx = sdata & AMASK;
+				if(csf2) cs2_idx = sdata & AMASK;
 				break;
 
 			case WR_DMEM:
 				if(csf1){
 					if(CS1_reg & CS_DECODE7){
-						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY| MODE_WR;
-						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY| MODE_WR;
-						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY| MODE_WR;
+						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_WR;
+						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_WR;
+						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_WR;
 						cs1_idx += 3;
 						if(cs1_idx > 0x1f) cs1_idx = 0;
 					}else{
-						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY| MODE_WR;
+						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_WR;
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
 					}
 				}
 				if(csf2){
 					if(CS2_reg & CS_DECODE7){
-						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY| MODE_WR;
-						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY| MODE_WR;
-						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY| MODE_WR;
+						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_WR;
+						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_WR;
+						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_WR;
 						cs2_idx += 3;
 						if(cs2_idx > 0x1f) cs2_idx = 0;
 					}else{
-						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY| MODE_WR;
+						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_WR;
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
 					}
 				}
@@ -469,10 +475,7 @@ void process_SPI(U8 iplfl){
 				break;
 			}
 		}else{
-			switch(sdata){
-			default:
-				break;
-
+			switch(sdata){		// not a parametric, use the whole byte to dispatch
 			case WITH_DECODE:
 				if(csf1) CS1_reg |= CS_DECODE7;
 				if(csf2) CS2_reg |= CS_DECODE7;
@@ -503,6 +506,15 @@ void process_SPI(U8 iplfl){
 						CS2_trig[i] = 0x0f | BLINKFL;
 					}
 				}
+				break;
+
+			case MODE_SET:
+			case BLINK_SLOW:
+			case BLINK_FAST:
+			case BLINK_OFF:
+			case DISP_ON:
+			case DISP_OFF:
+			default:
 				break;
 			}
 		}
@@ -2129,7 +2141,7 @@ void sg_op1(U8 son){
 }
 
 //-----------------------------------------------------------------------------
-// sg_op2s() set/clr the optd up segment
+// sg_op2m() set/clr the optd up segment
 //-----------------------------------------------------------------------------
 void sg_op2m(U8 son){
 

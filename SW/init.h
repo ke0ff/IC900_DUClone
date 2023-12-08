@@ -82,6 +82,7 @@
 #define	SIN_PACE_TIME		50				// wait a little over 2 word times (2 x 32/4800 s for one SIN word)
 #define	CLI_BUFLEN	100						// CLI buffer length
 #define	RE_BUFLEN	40						// buffer mem lengths
+#define	BLINK_TIME	SEC250MS				// blink cycle time
 
 // prescaled timer constants
 #define	PS_PER_TIC	10
@@ -148,77 +149,97 @@
 #define	TPULSE	(100L)				// in usec
 #define TMIN	(((SYSCLK / 100) * TPULSE)/10000L)	// minimum pulse width
 
-
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// GPIO PINNOUT DEFINES ///////////////////////////////////////////////////////////////////////////////////////////////
+// Note: "J1-", "J2-", "J3-", and "J4-" refer to the Tiva Launchpad eval board connections
+//	GND: J3-2, J2-1
+//	+3.3V (out): J1-1
+//	VBUS (+5V): J3-1
 // Port A defines
-#define RXD0			0x01		// in		uart0
-#define TXD0			0x02		// in		uart0
-#define SCLK			0x04		// in		IC900 LCD SPI (SSI0)
-#define CSS				0x08		// in
-#define MOSI			0x10		// in
-#define CS2				0x20		// in
-#define CS1				0x40		// in
-#define sparePA7		0x80		// in
+#define RXD0			0x01		// in	*		uart0 -- J11: connected to LP ICDI serial port
+#define TXD0			0x02		// in	*		uart0 -- J11: connected to LP ICDI serial port
+#define SCLK			0x04		// in	J2-10	IC900 LCD SPI (SSI0)
+#define CSS				0x08		// in	J2-09	FSS = ~(CS1 & CS2) (SSI0)
+#define MOSI			0x10		// in	J2-08	IC900 LCD SPI (SSI0)
+#define CS2				0x20		// in	J1-08	IC900 LCD SPI (chip select 1)
+#define CS1				0x40		// in	J1-09	IC900 LCD SPI (chip select 1)
+#define CMD_DATA		0x80		// in	J1-10	IC900 LCD SPI (addr) 1 = cmd, 0 = data
+#define DATA_CMD		0x80		// alt nomenclature for inverted case (same define, but this is to improve logical readability)
 
-#define	DRF				0x80		// datareg full flag for SPI buffer (needs to be a bitmap other than CS1 or CS2)
+#define	DRFF			0x01		// datareg full flag for SPI buffer (needs to be a bitmap other than CS1, CS2, or CMD_DATA)
 #define PORTA_DIRV		(TXD0)
 #define	PORTA_DENV		(0xff)
-#define	PORTA_PURV		(SCLK|CS1|MOSI|CS2|CSS|sparePA7)
+#define	PORTA_PURV		(SCLK|CS1|MOSI|CS2|CSS|CMD_DATA)
 #define	PORTA_INIT		0
 
 // Port B defines
 // parallel port, no bitmap			LCD data I/O bus
+#define DB0				0x01		// io	J1-03
+#define DB1				0x02		// io	J1-04
+#define DB2				0x04		// io	J2-02
+#define DB3				0x08		// io	J4-03
+#define DB4				0x10		// io	J1-07
+#define DB5				0x20		// io	J1-02
+#define DB6				0x40		// io	J2-07
+#define DB7				0x80		// io	J2-06
+
 #define PORTB_DIRV		(0)
 #define	PORTB_DENV		(0xff)
 #define	PORTB_PURV		(0xff)
 #define	PORTB_INIT		0
 
 // Port C defines
-#define sparePC4		0x10		// in		
-#define sparePC5		0x20		// in		
-#define sparePC6		0x40		// in		
-#define sparePC7		0x80		// in		
+// Note: PC0-3 reserved for JTAG
+#define sparePC4		0x10		// in	J4-04
+#define sparePC5		0x20		// in	J4-05
+#define sparePC6		0x40		// in	J4-06
+#define sparePC7		0x80		// in	J4-07
+
 #define PORTC_DIRV		(0)
 #define	PORTC_DENV		(0xf0)
 #define	PORTC_PURV		(0xf0)
 #define	PORTC_INIT		(0)
 
 // Port D defines
-#define LCD_FS			0x01		// out		font size
-#define LCD_RVS			0x02		// out		inverse image
-#define sparePD2		0x04		// in						(AIN5)
-#define sparePD3		0x08		// in						ss13Tx
-#define sparePD4		0x10		// in
-#define sparePD5		0x20		// in		
-#define sparePD6		0x40		// in						qei0A
-#define sparePD7		0x80		// in						qei0B
+#define LCD_FS			0x01		// out	J3-03	font size
+#define LCD_RVS			0x02		// out	J3-04	inverse image
+#define BUSYn			0x04		// OD	J3-05	SPI busy output (open-drain) (AIN5)
+#define sparePD3		0x08		// in	J3-06					ss13Tx
+#define sparePD4		0x10		// in	*						(usb, J9)
+#define sparePD5		0x20		// in	*						(usb, J9)
+#define sparePD6		0x40		// in	J4-08					qei0A
+#define sparePD7		0x80		// in	J4-09					qei0B
+
 #define PORTD_DIRV		(LCD_FS|LCD_RVS)
 #define	PORTD_DENV		(0xff)
-#define	PORTD_PURV		~(LCD_FS|LCD_RVS)
+#define	PORTD_PURV		~(LCD_FS|LCD_RVS|BUSYn)
 #define	PORTD_INIT		(LCD_FS|LCD_RVS)
 
 // Port E defines
-#define sparePE0		0x01		// in
-#define nTRD			0x02		// out		LCD bus read
-#define nTWR			0x04		// out		LCD bus write
-#define	TADDR			0x08		// out		LCD ADDR/CMD (0 = data, 1 = cmd)
-#define nTCS			0x10		// out		LCD bus enable
-#define TRESET			0x20		// out		LCD reset
+#define sparePE0		0x01		// in	J2-03
+#define nTRD			0x02		// out	J3-07	LCD bus read
+#define nTWR			0x04		// out	J3-08	LCD bus write
+#define	TADDR			0x08		// out	J3-09	LCD ADDR/CMD (0 = data, 1 = cmd)
+#define nTCS			0x10		// out	J1-05	LCD bus enable
+#define TRESET			0x20		// out	J1-06	LCD reset
+
 #define PORTE_DIRV		(nTRD|nTWR|TADDR|nTCS|TRESET)
 #define	PORTE_DENV		(nTRD|nTWR|TADDR|nTCS|TRESET|sparePE0)
 #define	PORTE_PURV		(sparePE0)
 #define	PORTE_INIT		(nTRD|nTWR|nTCS|TRESET)
 
-
 // Port F defines
-#define LED_PWM			0x01		// out		M1PWM4	{beeper}
-#define sparePF2		0x02		// in		(M1PWM5)
-#define sparePF3		0x04		// in		M1PWM6	PBSW LED PWM
-#define sparePF4		0x08		// in	M1PWM7	DU backlight PWM
-#define sparePF5		0x10		// in		T2CCP0	remote serial in
+#define LED_PWM			0x01		// out	J2-04	M1PWM4	{beeper}
+#define sparePF2		0x02		// in	J3-10	(M1PWM5)
+#define sparePF3		0x04		// in	J4-01	M1PWM6	PBSW LED PWM
+#define sparePF4		0x08		// in	J4-02	M1PWM7	DU backlight PWM
+#define sparePF5		0x10		// in	J4-10 	T2CCP0	remote serial in
 #define PORTF_DIRV		(LED_PWM)
 #define	PORTF_DENV		(LED_PWM|sparePF2|sparePF3|sparePF4|sparePF5)
 #define	PORTF_PURV		(sparePF2|sparePF3|sparePF4|sparePF5)
 #define	PORTF_INIT		0
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //-----------------------------------------------------------------------------
 // Global variables
@@ -456,6 +477,7 @@ U8 slide_time(U8 tf);
 U8 scan_time(U8 focus, U8 tf);
 U8 ipl_time(U8 tf);
 U32 get_free(void);
+U8 is_blink(void);
 
 void set_beep(U16 beep_frq, U16 b_count);
 void do_beep(U16 beep_cycles);

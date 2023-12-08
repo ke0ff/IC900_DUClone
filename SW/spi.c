@@ -85,6 +85,7 @@ void dbg_spirx(U8* sptr, U8 len, U8 buf){
 	ssi0_t = 0;
 	ssi0_h = len;
 }
+
 //////////////////
 // got_ssi0 returns true if buffer has data
 //
@@ -114,7 +115,8 @@ void ssi0_isr(void){
 
 	while(SSI0_MIS_R){										// clear data buffer
 		ssi0_buf[ssi0_h] = SSI0_DR_R;						// get data, place in buff
-		ssi0_status[ssi0_h] = GPIO_PORTA_DATA_R & (DRF|CS2|CS1); // get CS status, place in stat buff
+		// CS1/CS2/CMD_DATA are inverted when placed in buffer
+		ssi0_status[ssi0_h] = ~GPIO_PORTA_DATA_R & (CS2|CS1|CMD_DATA) | DRFF; // get CS status, place in stat buff
 		if(++ssi0_h == SPI_LEN) ssi0_h = 0;
 	}
 	if(ssi0_h == ssi0_t){
