@@ -26,13 +26,23 @@
  *
  *    Project scope rev History:
  *    In-process code-n-test.
+ *    12-08-23:		Added blink code to process_LCD().  Includes refresh of original segments when blink mem is written
+ *    					(allows system to recover the original symbol when the blink segment is "unblinked").
+ *    					Trapped BLINKOFF SPI cmd to re-trigger any blinking segments.
+ *    				Some preliminary SSI RX testing: The way to get an ISR hit for every byte received is to use the RX timeout
+ *    					feature (this basically bypasses the FIFO).  This requires the SSI clock to be set to a value that will
+ *						give a favorable result.  32 SSI clocks are required for the timeout.  So, the SSI clock needs to be
+ *						set to 1/(32*(tword+tclearance)). tword is the minimum time between SSI bytes and tclearance is the
+ *						overhead time needed to service the SSI ISR before the next SSI word starts.  The RTIM mask bit needs
+ *						to be set, and the timeout needs to be cleared manually inside the SSI ISR.
+ *						FSS does not seem to be used by the SSI as a slave.  Only the SCLK and data seem to be needed.
  *    12-07-23:		Ran a full segment unit test from a simulated SPI stream capture to LCD display.  Debugged
  *    					a couple of issues to get the CS1 and CS2 paths functional and all segments tested/verified.
  *    12-06-23:		Added CMD/DATA gpio to capture status of this "address" signal by SPI.
  *    				Preliminary unit test of SPI buffer data flow to LCD display was successful (after some debug).
  *	  12-04-23		Pieces are coming together.  Got basic LCD ram->display mechanism working.  Starting to add
  *						SPI stuff. Need to code LCD commands and work out the processing of the the SPI buffer.
- *					Added process_SPI with most of a dispatch switch to process SPI comds/data (need a scrub and DVT run)
+ *					Added process_SPI with most of a dispatch switch to process SPI cmds/data (need a scrub and DVT run)
  *
  *    11-21-23 jmh:  creation date
  *    				 <VERSION 0.0>
@@ -363,7 +373,7 @@ volatile	char	q = 0;
     do{
     	do{
     		// run the process loops and capture UART chars
-//    		q = process_IO(0);
+    		process_IO(0);
     		c = getchQ();
 //    		if(c){
 //    			getss(btbuf);
@@ -541,7 +551,7 @@ void process_IO(U8 flag){
 
 	// perform periodic process updates					// ! SOUT init must execute before SIN init !
 	process_CMD(flag);									// process CMD_FN state (primarily, the MFmic key-entry state machine)
-//	process_LCD(flag);									// lcd updates and blink machine
+	process_LCD(flag);									// lcd updates and blink machine
 //	process_ERR(flag);									// error reporting
 //	process_SPI(flag);									// spi input processing
 	return;

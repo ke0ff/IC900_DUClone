@@ -194,6 +194,7 @@ extern	U8	optrow[];		// opt row
 #define	CS_FBLINK	0x02			// fast blink
 #define	CS_SBLINK	0x04			// slow blink
 #define	CS_DISPON	0x08			// disp enable
+#define	CS_NEBLINK	(CS_FBLINK | CS_SBLINK)	// any blink
 
 // chip commands
 #define	MODE_SET	0x49			// /3 time-div, 1/3 bias, 2E-8 fdiv
@@ -326,6 +327,7 @@ extern	U8	optrow[];		// opt row
 //------------------------------------------------------------------------------
 void process_LCD(U8 iplfl);
 void process_SPI(U8 iplfl);
+void set_csn(U8 m, U8 n);
 
 
 void clear_main7(void);

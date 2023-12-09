@@ -21,7 +21,7 @@
 // Processor I/O assignments
 // ...see init.h
 
-#define	BITRATE		100000L
+#define	BITRATE		2000000L
 #define	CPSDVSR		32L
 #define	SCRVAL		((SYSCLK/(CPSDVSR * BITRATE))-1)
 

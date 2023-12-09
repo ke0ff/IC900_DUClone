@@ -171,6 +171,9 @@ U8 err2[7][5] = {
 //-----------------------------------------------------------------------------
 void process_LCD(U8 iplfl){
 			U8	i;
+			U8	j;
+			U8	m;
+			U8	k;
 	static	U8	blinker;
 
 	if(iplfl){
@@ -183,10 +186,52 @@ void process_LCD(U8 iplfl){
 		change_flag = MAIN7_FL|SUB7_FL|MAINSM_FL|SUBSM_FL|OPTROW_FL;
 		blinker = 0;
 	}
-	if(is_blink()){
-		// process blink
+	if((CS1_reg|CS2_reg) & CS_NEBLINK){					// if blink enabled...
+		if(is_blink()){									// and a new blink cycle has triggered
+			// process blink
+			if(blinker&0x01){							// blink segments = ON
+				for(i=0; i<LCD_MEMLEN; i++){
+					m = CS1_bmem[i];
+					if(m){
+						for(j=0; j<3; j++){
+							k = m & 0x01;
+							if(k) (*cs1_fn[i][j])(k);
+							m >>= 1;
+						}
+					}
+					m = CS2_bmem[i];
+					if(m){
+						for(j=0; j<3; j++){
+							k = m & 0x01;
+							if(k) (*cs2_fn[i][j])(k);
+							m >>= 1;
+						}
+					}
+				}
+			}else{										// blink segments = OFF
+				for(i=0; i<LCD_MEMLEN; i++){
+					m = CS1_bmem[i];
+					if(m){
+						for(j=0; j<3; j++){
+							k = m & 0x01;
+							if(k) (*cs1_fn[i][j])(0);
+							m >>= 1;
+						}
+					}
+					m = CS2_bmem[i];
+					if(m){
+						for(j=0; j<3; j++){
+							k = m & 0x01;
+							if(k) (*cs2_fn[i][j])(0);
+							m >>= 1;
+						}
+					}
+				}
+			}
+			blinker++;
+		}
 	}
-	// if timer expired and change_flag has set bits, update LCD
+	// if SPI timer expired and change_flag has set bits, update LCD
 	trig_scan1(MODE_OR);
 	trig_scan2(MODE_OR);
 	if(change_flag){
@@ -508,10 +553,32 @@ void process_SPI(U8 iplfl){
 				}
 				break;
 
-			case MODE_SET:
 			case BLINK_SLOW:
+				if(csf1) CS1_reg = (CS1_reg & ~CS_NEBLINK) | CS_SBLINK;
+				if(csf2) CS2_reg = (CS2_reg & ~CS_NEBLINK) | CS_SBLINK;
+				break;
+
 			case BLINK_FAST:
+				if(csf1) CS1_reg = (CS1_reg & ~CS_NEBLINK) | CS_FBLINK;
+				if(csf2) CS2_reg = (CS2_reg & ~CS_NEBLINK) | CS_FBLINK;
+				break;
+
 			case BLINK_OFF:
+				if(csf1){
+					CS1_reg = (CS1_reg & ~CS_NEBLINK);
+					for(i=0; i<LCD_MEMLEN; i++){
+						CS1_trig[i] = CS1_bmem[i] | MODE_OR;
+					}
+				}
+				if(csf2){
+					CS2_reg = (CS2_reg & ~CS_NEBLINK);
+					for(i=0; i<LCD_MEMLEN; i++){
+						CS2_trig[i] = CS2_bmem[i] | MODE_OR;
+					}
+				}
+				break;
+
+			case MODE_SET:
 			case DISP_ON:
 			case DISP_OFF:
 			default:
@@ -520,6 +587,15 @@ void process_SPI(U8 iplfl){
 		}
 	}
 	return;
+}
+
+//-----------------------------------------------------------------------------
+// set CSn_reg
+//-----------------------------------------------------------------------------
+void set_csn(U8 m, U8 n){
+
+	CS1_reg = m;
+	CS2_reg = n;
 }
 
 //-----------------------------------------------------------------------------
@@ -4830,11 +4906,13 @@ void trig_scan1(U8 mode){
 					(*cs1_fn[i][j])(k & 0x01);
 					k >>= 1;
 				}
+				CS1_trig[i] = 0;
+			}else{
+				CS1_trig[i] = MODE_OR | CS1_dmem[i];
 			}
 		}
-		CS1_trig[i] = 0;
 	}
-}
+ }
 
 void trig_scan2(U8 mode){
 	U8	i;
@@ -4875,9 +4953,11 @@ void trig_scan2(U8 mode){
 					(*cs2_fn[i][j])(k & 0x01);
 					k >>= 1;
 				}
+				CS2_trig[i] = 0;
+			}else{
+				CS2_trig[i] = MODE_OR | CS2_dmem[i];
 			}
 		}
-		CS2_trig[i] = 0;
 	}
 }
 

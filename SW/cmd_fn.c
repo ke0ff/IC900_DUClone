@@ -525,6 +525,15 @@ volatile	char	pr = FALSE;				// R flag (set if <wsp>-R<wsp> found in args)
 
 				case lcd_tst:													// debug, LCD test
 //					lcd_test();
+					params[0] = 0xffff;
+					params[1] = 0xffff;
+					params[2] = 0;
+					params[3] = 0;
+					get_Dargs(1, nargs, args, params);						// parse param numerics into params[] array
+					if(ph){
+						set_csn((U8)params[0], (U8)params[1]);
+						break;
+					}
 					if(px){
 						putsQ("every seg spi dvt, CS1:");
 						i = 0;
@@ -588,10 +597,8 @@ volatile	char	pr = FALSE;				// R flag (set if <wsp>-R<wsp> found in args)
 								putsQ("LCD err2");
 							}
 						}else{
-							params[0] = 0xffff;
-							params[1] = 0xffff;
-							params[2] = 0;
-							get_Dargs(1, nargs, args, params);						// parse param numerics into params[] array
+							if(params[3]) k = BLINKFL;
+							else k = 0;
 							i = 1;
 							if(params[0]>31){
 								params[0] -= 32;
@@ -609,7 +616,7 @@ volatile	char	pr = FALSE;				// R flag (set if <wsp>-R<wsp> found in args)
 							default:
 								j = MODE_WR;
 							}
-							trig_fill((U8)params[0], j | (U8)params[1], i);							// 1
+							trig_fill((U8)params[0], j | (U8)params[1] | k, i);							// 1
 
 							trig_scan1(MODE_OR);
 							trig_scan2(MODE_OR);
@@ -618,7 +625,10 @@ volatile	char	pr = FALSE;				// R flag (set if <wsp>-R<wsp> found in args)
 							wrlcd_str(mainsm, MAINSM_LEN, MAINSM_OFFS);
 							wrlcd_str(optrow, OPTROW_LEN, OPTROW_OFFS);
 							wrlcd_str(subsm, SUBSM_LEN, SUBSM_OFFS);
-							putsQ("LCD test.");
+							putsQ("LCD test, ESC to exit...");
+							while(bchar != ESC){
+								process_LCD(0);
+							}
 						}
 					}
 					break;
