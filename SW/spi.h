@@ -21,8 +21,8 @@
 // Processor I/O assignments
 // ...see init.h
 
-#define	BITRATE		2000000L
-#define	CPSDVSR		32L
+#define	BITRATE		1250000L
+#define	CPSDVSR		64L
 #define	SCRVAL		((SYSCLK/(CPSDVSR * BITRATE))-1)
 
 // TIMER1B isr mask

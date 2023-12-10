@@ -553,7 +553,7 @@ void process_IO(U8 flag){
 	process_CMD(flag);									// process CMD_FN state (primarily, the MFmic key-entry state machine)
 	process_LCD(flag);									// lcd updates and blink machine
 //	process_ERR(flag);									// error reporting
-//	process_SPI(flag);									// spi input processing
+	process_SPI(flag);									// spi input processing
 	return;
 }
 

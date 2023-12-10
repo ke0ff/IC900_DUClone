@@ -59,15 +59,16 @@ void init_ssi0(void)
 	ssi0_t = 0;
 	SSI0_CR1_R = 0;											// disable SSI, master mode
 	SSI0_CPSR_R = CPSDVSR;
-	SSI0_CR0_R = (SSI_CR0_SCR_M & (SCRVAL << 8)) | SSI_CR0_DSS_8 | SSI_CR0_SPH | SSI_CR0_SPO; // SCR = [15:8], SPH[7] = 0, SPO[6] = 0 Freescale, DSS = 8-bit data
+	// SCR = [15:8], SPH[7] = 1, SPO[6] = 1, Freescale, DSS = 7 (8-bit data)
+	SSI0_CR0_R = (U32)((SSI_CR0_SCR_M & (SCRVAL << 8))) | (U32)SSI_CR0_DSS_8 | (U32)SSI_CR0_SPO | (U32)SSI_CR0_SPH;
 	SSI0_IM_R = SSI_IM_RXIM | SSI_IM_RTIM;					// enable ISR
 	SSI0_CR1_R = SSI_CR1_MS;								// slave
 	SSI0_CC_R = 0;
 	SSI0_CR1_R = SSI_CR1_SSE | SSI_CR1_MS;					// enable SSI, slave
-	while(SSI0_MIS_R){										// clear data buffer
+	while(SSI0_MIS_R | (SSI0_SR_R & SSI_SR_RNE)){			// flush data buffer
 		i = SSI0_DR_R;
 	}
-	NVIC_EN0_R = NVIC_EN0_SSI0;								// SSI0 isr*/
+	NVIC_EN0_R = NVIC_EN0_SSI0;								// enable SSI0 isr
 	return;
 }
 
@@ -103,7 +104,7 @@ U16 get_ssi0(void){
 
 	ii = (U16)ssi0_status[ssi0_t] << 8;
 	ii |= (U16)ssi0_buf[ssi0_t] & 0xff;
-	if(++ssi0_t == SPI_LEN) ssi0_t = 0;
+	if(ssi0_t++ == (SPI_LEN-1)) ssi0_t = 0;
 	return ii;
 }
 
@@ -117,11 +118,15 @@ void ssi0_isr(void){
 		ssi0_buf[ssi0_h] = SSI0_DR_R;						// get data, place in buff
 		// CS1/CS2/CMD_DATA are inverted when placed in buffer
 		ssi0_status[ssi0_h] = ~GPIO_PORTA_DATA_R & (CS2|CS1|CMD_DATA) | DRFF; // get CS status, place in stat buff
-		if(++ssi0_h == SPI_LEN) ssi0_h = 0;
+		if(ssi0_h++ == (SPI_LEN-1)){
+			ssi0_h = 0;
+		}
 	}
 	if(ssi0_h == ssi0_t){
 		ssi0_statreg |= SPI_OVFLW;
-		if(++ssi0_t == SPI_LEN) ssi0_t = 0;
+		if(ssi0_t++ == (SPI_LEN-1)){
+			ssi0_t = 0;
+		}
 	}
 	SSI0_ICR_R = SSI_ICR_RTIC;
 	return;

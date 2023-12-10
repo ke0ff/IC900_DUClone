@@ -161,7 +161,7 @@
 #define SCLK			0x04		// in	J2-10	IC900 LCD SPI (SSI0)
 #define CSS				0x08		// in	J2-09	FSS = ~(CS1 & CS2) (SSI0)
 #define MOSI			0x10		// in	J2-08	IC900 LCD SPI (SSI0)
-#define CS2				0x20		// in	J1-08	IC900 LCD SPI (chip select 1)
+#define CS2				0x20		// in	J1-08	IC900 LCD SPI (chip select 2)
 #define CS1				0x40		// in	J1-09	IC900 LCD SPI (chip select 1)
 #define CMD_DATA		0x80		// in	J1-10	IC900 LCD SPI (addr) 1 = cmd, 0 = data
 #define DATA_CMD		0x80		// alt nomenclature for inverted case (same define, but this is to improve logical readability)
