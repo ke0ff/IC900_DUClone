@@ -34,11 +34,15 @@
 //void open_nvr(void);
 
 // SPI input buffer
-U8	ssi0_buf[SPI_LEN];		// data buff
-U8	ssi0_status[SPI_LEN];	// cs/status buff
-U8	ssi0_h;					// head
-U8	ssi0_t;					// tail
-U8	ssi0_statreg;			// SPI global status
+			U8	ssi0_buf[SPI_LEN];		// data buff
+			U8	ssi0_status[SPI_LEN];	// cs/status buff
+			U8	ssi0_h;					// head
+			U8	ssi0_t;					// tail
+			U8	ssi0_statreg;			// SPI global status
+			U8	ssi0_meta;				// SPI meta dat capture register
+volatile	U32	ssitimer;				// ssi timer
+
+#define	SSITO_TIME	(3)
 
 // ******************************************************************
 // ***** START OF CODE ***** //
@@ -68,6 +72,19 @@ void init_ssi0(void)
 	while(SSI0_MIS_R | (SSI0_SR_R & SSI_SR_RNE)){			// flush data buffer
 		i = SSI0_DR_R;
 	}
+	// config SCLK edge ISR
+	i = GPIO_PORTF_IM_R;									// disable edge intr
+	ssi0_meta = 0;
+	GPIO_PORTF_IM_R = 0;
+	GPIO_PORTF_IEV_R |= SCLKE;								// rising edge
+	GPIO_PORTF_IBE_R &= ~SCLKE;								// one edge
+	GPIO_PORTF_IS_R &= ~SCLKE;								// edge ints
+	GPIO_PORTF_ICR_R = 0xff;								// clear int flags
+	i |= SCLKE;												// enable sclk edge intr
+	GPIO_PORTF_IM_R = i;
+	ssitimer = 0;
+	NVIC_EN0_R = NVIC_EN0_GPIOF;							// enable GPIOC intr in the NVIC_EN regs
+
 	NVIC_EN0_R = NVIC_EN0_SSI0;								// enable SSI0 isr
 	return;
 }
@@ -117,7 +134,9 @@ void ssi0_isr(void){
 	while(SSI0_SR_R & SSI_SR_RNE){							// check if data available
 		ssi0_buf[ssi0_h] = SSI0_DR_R;						// get data, place in buff
 		// CS1/CS2/CMD_DATA are inverted when placed in buffer
-		ssi0_status[ssi0_h] = ~GPIO_PORTA_DATA_R & (CS2|CS1|CMD_DATA) | DRFF; // get CS status, place in stat buff
+		ssi0_status[ssi0_h] = ssi0_meta;					// get CS status, place in stat buff
+		GPIO_PORTF_ICR_R = SCLKE;							// pre-clear int flags
+		GPIO_PORTF_IM_R |= SCLKE;							// enable edge intr
 		if(ssi0_h++ == (SPI_LEN-1)){
 			ssi0_h = 0;
 		}
@@ -128,10 +147,28 @@ void ssi0_isr(void){
 			ssi0_t = 0;
 		}
 	}
+//	ssitimer = SSITO_TIME;
 	SSI0_ICR_R = SSI_ICR_RTIC;
 	return;
 }
 
+//-----------------------------------------------------------------------------
+// gpiof_isr
+// GPIO_PORTF isr, processes first falling edge of SCLK to capture meta data
+//		on Port A.
+//		SSI0 init & SSI0 ISR enables this ISR
+//		This ISR disables itself after 1 call.
+//-----------------------------------------------------------------------------
+void gpiof_isr(void){
+
+	// clear int flags
+	GPIO_PORTF_ICR_R = SCLKE;
+	// get CS status & cmd, place in stat buff
+	ssi0_meta = ~GPIO_PORTA_DATA_R & (CS2|CS1|CMD_DATA) | DRFF;
+	// disable gpiof
+	GPIO_PORTF_IM_R &= ~SCLKE;
+	return;
+}
 
 
 /*
@@ -466,9 +503,30 @@ void rwusn_nvr(U8* dptr, U8 mode)
 	close_nvr();
 	return;
 }
+*/
 
 //-----------------------------------------------------------------------------
-// Timer1B_ISR() drives bit-bang SPI
+// is_ssito() returns true if ssitimer == 0
+//-----------------------------------------------------------------------------
+U8 is_ssito(void){
+
+	if(ssitimer == 0){
+		return 1;
+	}
+	return 0;
+}
+
+//-----------------------------------------------------------------------------
+// kick_ssito() resets ssitimer
+//-----------------------------------------------------------------------------
+void kick_ssito(void){
+
+	ssitimer = SSITO_TIME;
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// Timer1B_ISR() drives SPI TO timer
 //-----------------------------------------------------------------------------
 //
 // Called when timer 1B overflows (NORM mode):
@@ -479,10 +537,16 @@ void rwusn_nvr(U8* dptr, U8 mode)
 
 void Timer1B_ISR(void){
 
+//	GPIO_PORTF_DATA_R ^= sparePF3;
 	// set flag to trigger bit
-	if(TIMER1_MIS_R & TIMER_MIS_TBTOMIS) ssiflag = 1;
+	if(TIMER1_MIS_R & TIMER_MIS_TBTOMIS){
+		if(ssitimer){										// update ssi timer
+			ssitimer--;
+		}
+	}
 	// clear ISR flags
 	TIMER1_ICR_R = TIMER1_MIS_R & TIMERB_MIS_MASK;
+//	GPIO_PORTF_DATA_R ^= sparePF3;
 	return;
 }
-*/
+

@@ -191,7 +191,7 @@ void process_LCD(U8 iplfl){
 			// process blink
 			if(blinker&0x01){							// blink segments = ON
 				for(i=0; i<LCD_MEMLEN; i++){
-					m = CS1_bmem[i];
+					m = CS1_bmem[i] & CS1_dmem[i];
 					if(m){
 						for(j=0; j<3; j++){
 							k = m & 0x01;
@@ -199,7 +199,7 @@ void process_LCD(U8 iplfl){
 							m >>= 1;
 						}
 					}
-					m = CS2_bmem[i];
+					m = CS2_bmem[i] & CS2_dmem[i];
 					if(m){
 						for(j=0; j<3; j++){
 							k = m & 0x01;
@@ -234,7 +234,8 @@ void process_LCD(U8 iplfl){
 	// if SPI timer expired and change_flag has set bits, update LCD
 	trig_scan1(MODE_OR);
 	trig_scan2(MODE_OR);
-	if(change_flag){
+	if(change_flag && is_ssito()){
+		kick_ssito();
 		for(i=0x80; i>= OPTROW_FL; i>>=1){
 			switch(i&change_flag){
 			case MAIN7_FL:
@@ -326,11 +327,15 @@ void process_SPI(U8 iplfl){
 	U8	swdat;
 	U8	i;
 	U8	datcmd;
+	U8	skip1;
+	U8	skip2;
 
 	if(iplfl){
 		// IPL init
 	}
 	while(got_ssi0()){
+		skip1 = 0;
+		skip2 = 0;
 		ii = get_ssi0();
 		sdata = (U8)ii;
 		i = (U8)(ii >> 8);
@@ -340,249 +345,213 @@ void process_SPI(U8 iplfl){
 
 		// if data & decode7, set up for write
 		if(datcmd){
-			sdata &= 0x0f;
-			if((csf1) && (CS1_reg & CS_DECODE7)) sdata |= WR_DMEM;
-			if((csf2) && (CS2_reg & CS_DECODE7)) sdata |= WR_DMEM;
-		}
-		if(sdata & 0x80){						// is a parametric command?
-			swdat = sdata & 0xf0;				// mask off data to get command
-			switch(swdat){
-			default:
-				break;
-
-			case LOAD_PTR:
-			case LOAD_PTR2:
-				if(csf1) cs1_idx = sdata & AMASK;
-				if(csf2) cs2_idx = sdata & AMASK;
-				break;
-
-			case WR_DMEM:
-				if(csf1){
-					if(CS1_reg & CS_DECODE7){
-						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_WR;
-						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_WR;
-						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_WR;
-						cs1_idx += 3;
-						if(cs1_idx > 0x1f) cs1_idx = 0;
-					}else{
-						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_WR;
-						if(++cs1_idx > 0x1f) cs1_idx = 0;
-					}
+			if(csf1){
+				if(CS1_reg & CS_DECODE7){	// 7-seg decode
+					CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_WR;
+					CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_WR;
+					CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_WR;
+					cs1_idx += 3;
+					if(cs1_idx > 0x1f) cs1_idx = 0;
+				}else{						// no decode
+					CS1_trig[cs1_idx] = ((sdata & DMASK0) >> DSHFT0) | DATA_RDY | MODE_WR;
+					CS1_trig[cs1_idx+1] = ((sdata & DMASK1) >> DSHFT1) | DATA_RDY | MODE_WR;
+					CS1_trig[cs1_idx+2] = ((sdata & DMASK2) >> DSHFT2) | DATA_RDY | MODE_WR;
+					cs1_idx += 3;
+					if(cs1_idx > 0x1f) cs1_idx = 0;
 				}
-				if(csf2){
-					if(CS2_reg & CS_DECODE7){
-						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_WR;
-						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_WR;
-						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_WR;
-						cs2_idx += 3;
-						if(cs2_idx > 0x1f) cs2_idx = 0;
-					}else{
-						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_WR;
-						if(++cs2_idx > 0x1f) cs2_idx = 0;
-					}
-				}
-				break;
-
-			case OR_DMEM:
-				if(csf1){
-					if(CS1_reg & CS_DECODE7){
-						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_OR;
-						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_OR;
-						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_OR;
-						cs1_idx += 3;
-						if(cs1_idx > 0x1f) cs1_idx = 0;
-					}else{
-						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR;
-						if(++cs1_idx > 0x1f) cs1_idx = 0;
-					}
-				}
-				if(csf2){
-					if(CS2_reg & CS_DECODE7){
-						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_OR;
-						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_OR;
-						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_OR;
-						cs2_idx += 3;
-						if(cs2_idx > 0x1f) cs2_idx = 0;
-					}else{
-						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR;
-						if(++cs2_idx > 0x1f) cs2_idx = 0;
-					}
-				}
-				break;
-
-			case AND_DMEM:
-				if(csf1){
-					if(CS1_reg & CS_DECODE7){
-						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_AND;
-						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_AND;
-						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_AND;
-						cs1_idx += 3;
-						if(cs1_idx > 0x1f) cs1_idx = 0;
-					}else{
-						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND;
-						if(++cs1_idx > 0x1f) cs1_idx = 0;
-					}
-				}
-				if(csf2){
-					if(CS2_reg & CS_DECODE7){
-						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_AND;
-						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_AND;
-						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_AND;
-						cs2_idx += 3;
-						if(cs2_idx > 0x1f) cs2_idx = 0;
-					}else{
-						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND;
-						if(++cs2_idx > 0x1f) cs2_idx = 0;
-					}
-				}
-				break;
-				////////////
-
-			case WR_BMEM:
-				if(csf1){
-					if(CS1_reg & CS_DECODE7){
-						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | BLINKFL| MODE_WR;
-						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | BLINKFL| MODE_WR;
-						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | BLINKFL| MODE_WR;
-						cs1_idx += 3;
-						if(cs1_idx > 0x1f) cs1_idx = 0;
-					}else{
-						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL| MODE_WR;
-						if(++cs1_idx > 0x1f) cs1_idx = 0;
-					}
-				}
-				if(csf2){
-					if(CS2_reg & CS_DECODE7){
-						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | BLINKFL| MODE_WR;
-						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | BLINKFL| MODE_WR;
-						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | BLINKFL| MODE_WR;
-						cs2_idx += 3;
-						if(cs2_idx > 0x1f) cs2_idx = 0;
-					}else{
-						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL| MODE_WR;
-						if(++cs2_idx > 0x1f) cs2_idx = 0;
-					}
-				}
-				break;
-
-			case OR_BMEM:
-				if(csf1){
-					if(CS1_reg & CS_DECODE7){
-						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_OR | BLINKFL;
-						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_OR | BLINKFL;
-						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_OR | BLINKFL;
-						cs1_idx += 3;
-						if(cs1_idx > 0x1f) cs1_idx = 0;
-					}else{
-						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR | BLINKFL;
-						if(++cs1_idx > 0x1f) cs1_idx = 0;
-					}
-				}
-				if(csf2){
-					if(CS2_reg & CS_DECODE7){
-						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_OR | BLINKFL;
-						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_OR | BLINKFL;
-						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_OR | BLINKFL;
-						cs2_idx += 3;
-						if(cs2_idx > 0x1f) cs2_idx = 0;
-					}else{
-						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR | BLINKFL;
-						if(++cs2_idx > 0x1f) cs2_idx = 0;
-					}
-				}
-				break;
-
-			case AND_BMEM:
-				if(csf1){
-					if(CS1_reg & CS_DECODE7){
-						CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_AND | BLINKFL;
-						CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_AND | BLINKFL;
-						CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_AND | BLINKFL;
-						cs1_idx += 3;
-						if(cs1_idx > 0x1f) cs1_idx = 0;
-					}else{
-						CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND | BLINKFL;
-						if(++cs1_idx > 0x1f) cs1_idx = 0;
-					}
-				}
-				if(csf2){
-					if(CS2_reg & CS_DECODE7){
-						CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_AND | BLINKFL;
-						CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_AND | BLINKFL;
-						CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_AND | BLINKFL;
-						cs2_idx += 3;
-						if(cs2_idx > 0x1f) cs2_idx = 0;
-					}else{
-						CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND | BLINKFL;
-						if(++cs2_idx > 0x1f) cs2_idx = 0;
-					}
-				}
-				break;
+				skip1 = 1;
 			}
-		}else{
-			switch(sdata){		// not a parametric, use the whole byte to dispatch
-			case WITH_DECODE:
-				if(csf1) CS1_reg |= CS_DECODE7;
-				if(csf2) CS2_reg |= CS_DECODE7;
-				break;
+			if(csf2){
+				if(CS2_reg & CS_DECODE7){	// 7-seg decode
+					CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_WR;
+					CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_WR;
+					CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_WR;
+					cs2_idx += 3;
+					if(cs2_idx > 0x1f) cs2_idx = 0;
+				}else{						// no decode
+					CS2_trig[cs2_idx] = ((sdata & DMASK0) >> DSHFT0) | DATA_RDY | MODE_WR;
+					CS2_trig[cs2_idx+1] = ((sdata & DMASK1) >> DSHFT1) | DATA_RDY | MODE_WR;
+					CS2_trig[cs2_idx+2] = ((sdata & DMASK2) >> DSHFT2) | DATA_RDY | MODE_WR;
+					cs2_idx += 3;
+					if(cs2_idx > 0x1f) cs2_idx = 0;
+				}
+				skip2 = 1;
+			}
+		}
+		if(csf1 && !skip1){
+			if(sdata & 0xC0){						// is a parametric command?
+				swdat = sdata & 0xf0;				// mask off data to get command
+				switch(swdat){
+				default:
+					break;
 
-			case WITHOUT_DECODE:
-				if(csf1) CS1_reg &= ~CS_DECODE7;
-				if(csf2) CS2_reg &= ~CS_DECODE7;
-				break;
+				case LOAD_PTR:
+				case LOAD_PTR2:
+					cs1_idx = sdata & AMASK;
+					break;
 
-			case CLR_DMEM:
-				for(i=0; i<0x1f; i++){
-					if(csf1){
+				case WR_DMEM:
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_WR;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+					break;
+
+				case OR_DMEM:
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+					break;
+
+				case AND_DMEM:
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+					break;
+					////////////
+
+				case WR_BMEM:
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL| MODE_WR;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+					break;
+
+				case OR_BMEM:
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR | BLINKFL;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+					break;
+
+				case AND_BMEM:
+					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND | BLINKFL;
+					if(++cs1_idx > 0x1f) cs1_idx = 0;
+					break;
+				}
+			}else{
+				switch(sdata){		// not a parametric, use the whole byte to dispatch
+				case WITH_DECODE:
+					CS1_reg |= CS_DECODE7;
+					break;
+
+				case WITHOUT_DECODE:
+					CS1_reg &= ~CS_DECODE7;
+					break;
+
+				case CLR_DMEM:
+					for(i=0; i<0x1f; i++){
 						CS1_trig[i] = 0x0f;
 					}
-					if(csf2){
-						CS2_trig[i] = 0x0f;
-					}
-				}
-				break;
+					break;
 
-			case CLR_BMEM:
-				for(i=0; i<0x1f; i++){
-					if(csf1){
+				case CLR_BMEM:
+					for(i=0; i<0x1f; i++){
 						CS1_trig[i] = 0x0f | BLINKFL;
 					}
-					if(csf2){
-						CS2_trig[i] = 0x0f | BLINKFL;
-					}
-				}
-				break;
+					break;
 
-			case BLINK_SLOW:
-				if(csf1) CS1_reg = (CS1_reg & ~CS_NEBLINK) | CS_SBLINK;
-				if(csf2) CS2_reg = (CS2_reg & ~CS_NEBLINK) | CS_SBLINK;
-				break;
+				case BLINK_SLOW:
+					CS1_reg = (CS1_reg & ~CS_NEBLINK) | CS_SBLINK;
+					break;
 
-			case BLINK_FAST:
-				if(csf1) CS1_reg = (CS1_reg & ~CS_NEBLINK) | CS_FBLINK;
-				if(csf2) CS2_reg = (CS2_reg & ~CS_NEBLINK) | CS_FBLINK;
-				break;
+				case BLINK_FAST:
+					CS1_reg = (CS1_reg & ~CS_NEBLINK) | CS_FBLINK;
+					break;
 
-			case BLINK_OFF:
-				if(csf1){
+				case BLINK_OFF:
 					CS1_reg = (CS1_reg & ~CS_NEBLINK);
 					for(i=0; i<LCD_MEMLEN; i++){
 						CS1_trig[i] = CS1_bmem[i] | MODE_OR;
 					}
+					break;
+
+				case MODE_SET:
+				case DISP_ON:
+				case DISP_OFF:
+				default:
+					break;
 				}
-				if(csf2){
+			}
+		}
+		if(csf2 && !skip2){
+			if(sdata & 0xC0){						// is a parametric command?
+				swdat = sdata & 0xf0;				// mask off data to get command
+				switch(swdat){
+				default:
+					break;
+
+				case LOAD_PTR:
+				case LOAD_PTR2:
+					cs2_idx = sdata & AMASK;
+					break;
+
+				case WR_DMEM:
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_WR;
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
+					break;
+
+				case OR_DMEM:
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR;
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
+					break;
+
+				case AND_DMEM:
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND;
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
+					break;
+					////////////
+
+				case WR_BMEM:
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL| MODE_WR;
+					if(++cs2_idx > 0x1f) cs1_idx = 0;
+					break;
+
+				case OR_BMEM:
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR | BLINKFL;
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
+					break;
+
+				case AND_BMEM:
+					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND | BLINKFL;
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
+					break;
+				}
+			}else{
+				switch(sdata){		// not a parametric, use the whole byte to dispatch
+				case WITH_DECODE:
+					CS2_reg |= CS_DECODE7;
+					break;
+
+				case WITHOUT_DECODE:
+					CS2_reg &= ~CS_DECODE7;
+					break;
+
+				case CLR_DMEM:
+					for(i=0; i<0x1f; i++){
+						CS2_trig[i] = 0x0f;
+					}
+					break;
+
+				case CLR_BMEM:
+					for(i=0; i<0x1f; i++){
+						CS2_trig[i] = 0x0f | BLINKFL;
+					}
+					break;
+
+				case BLINK_SLOW:
+					CS2_reg = (CS2_reg & ~CS_NEBLINK) | CS_SBLINK;
+					break;
+
+				case BLINK_FAST:
+					CS2_reg = (CS2_reg & ~CS_NEBLINK) | CS_FBLINK;
+					break;
+
+				case BLINK_OFF:
 					CS2_reg = (CS2_reg & ~CS_NEBLINK);
 					for(i=0; i<LCD_MEMLEN; i++){
 						CS2_trig[i] = CS2_bmem[i] | MODE_OR;
 					}
-				}
-				break;
+					break;
 
-			case MODE_SET:
-			case DISP_ON:
-			case DISP_OFF:
-			default:
-				break;
+				case MODE_SET:
+				case DISP_ON:
+				case DISP_OFF:
+				default:
+					break;
+				}
 			}
 		}
 	}
@@ -4900,8 +4869,8 @@ void trig_scan1(U8 mode){
 				k &= (~m & BIT_MASK);
 				break;
 			}
-			memptr[i] = k;
-			if(!(m & BLINKFL)){
+			if(!(m & BLINKFL) && (k != memptr[i])){
+				memptr[i] = k;
 				for(j=0; j<3; j++){
 					(*cs1_fn[i][j])(k & 0x01);
 					k >>= 1;
@@ -4947,8 +4916,8 @@ void trig_scan2(U8 mode){
 				k &= (~m & BIT_MASK);
 				break;
 			}
-			memptr[i] = k;
-			if(!(m & BLINKFL)){
+			if(!(m & BLINKFL) && (k != memptr[i])){
+				memptr[i] = k;
 				for(j=0; j<3; j++){
 					(*cs2_fn[i][j])(k & 0x01);
 					k >>= 1;

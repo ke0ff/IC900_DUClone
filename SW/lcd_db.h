@@ -209,6 +209,13 @@ extern	U8	optrow[];		// opt row
 #define	LOAD_PTR2	0xF0			// switch alternate
 #define	AMASK		0x1F			// address mask
 #define	DMASK		0x0F			// data mask
+#define	DMASK0		0x07			// data mask, addr+0
+#define	DSHFT0		0x00			// data shift, addr+0
+#define	DMASK1		0x38			// data mask, addr+1
+#define	DSHFT1		0x03			// data shift, addr+1
+#define	DMASK2		0xc0			// data mask, addr+2
+#define	DSHFT2		0x06			// data shift, addr+2
+
 #define	WR_DMEM		0xD0			// write with (0x0f masked data)
 #define	OR_DMEM		0xB0			// OR with (0x0f masked data)
 #define	AND_DMEM	0x90			// AND with (0x0f masked data)
@@ -217,6 +224,9 @@ extern	U8	optrow[];		// opt row
 #define	OR_BMEM		0xA0			// OR with (0x0f masked data)
 #define	AND_BMEM	0x80			// AND with (0x0f masked data)
 #define	CLR_BMEM	0x00			// clear blink. mem*/
+// internal command aliases
+#define	WR_DDEC		0x70			// write disp data with decode
+#define	WR_BDEC		0x60			// write blink data with decode
 
 #define	MAX_SRF		7				// #srf bargraph segments
 #define	MSMET_ADDR	0x06

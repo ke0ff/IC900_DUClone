@@ -144,7 +144,7 @@
 #define TIMER3_PS 32
 
 #define TIMER1B_PS 		1			// prescale value for timer1B
-#define	BBSPICLK_FREQ	600000L		// edge freq for BB SPI clk
+#define	SPITIMER_FREQ	10000L		// timer freq for SPI TO timer
 
 #define	TPULSE	(100L)				// in usec
 #define TMIN	(((SYSCLK / 100) * TPULSE)/10000L)	// minimum pulse width
@@ -230,13 +230,13 @@
 
 // Port F defines
 #define LED_PWM			0x01		// out	J2-04	M1PWM4	{beeper}
-#define sparePF2		0x02		// in	J3-10	(M1PWM5)
-#define sparePF3		0x04		// in	J4-01	M1PWM6	PBSW LED PWM
-#define sparePF4		0x08		// in	J4-02	M1PWM7	DU backlight PWM
-#define sparePF5		0x10		// in	J4-10 	T2CCP0	remote serial in
-#define PORTF_DIRV		(LED_PWM)
-#define	PORTF_DENV		(LED_PWM|sparePF2|sparePF3|sparePF4|sparePF5)
-#define	PORTF_PURV		(sparePF2|sparePF3|sparePF4|sparePF5)
+#define sparePF1		0x02		// in	J3-10	(M1PWM5)
+#define sparePF2		0x04		// in	J4-01	M1PWM6	PBSW LED PWM
+#define sparePF3		0x08		// out	J4-02	M1PWM7
+#define SCLKE			0x10		// in	J4-10 	T2CCP0	SCLK edge detect
+#define PORTF_DIRV		(LED_PWM|sparePF3)
+#define	PORTF_DENV		(LED_PWM|sparePF1|sparePF2|SCLKE|sparePF3)
+#define	PORTF_PURV		(sparePF1|sparePF2|SCLKE)
 #define	PORTF_INIT		0
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

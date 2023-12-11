@@ -51,6 +51,10 @@ void init_ssi0(void);
 U8 got_ssi0(void);
 U16 get_ssi0(void);
 void ssi0_isr(void);
+void gpiof_isr(void);
+U8 is_ssito(void);
+void kick_ssito(void);
+void Timer1B_ISR(void);
 
 /*uint8_t send_spi3(uint8_t data);
 int put_spi(const U8 *string, U8 mode);

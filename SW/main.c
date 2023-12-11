@@ -957,13 +957,13 @@ static	U32	prescale;				// prescales the ms rate to the slow timer rates
 	}
 	// process app timers
 	free_32++;											// update large free-running timer
-	if (waittimer != 0){								// update wait timer
+	if(waittimer != 0){									// update wait timer
 		waittimer--;
 	}
-	if (waittimer2 != 0){								// update wait2 timer
+	if(waittimer2 != 0){								// update wait2 timer
 		waittimer2--;
 	}
-	if (--blinktimer == 0){								// update blink timer
+	if(--blinktimer == 0){								// update blink timer
 		blinkfl = 1;
 		blinktimer = BLINK_TIME;
 	}
@@ -976,7 +976,7 @@ static	U32	prescale;				// prescales the ms rate to the slow timer rates
 	}
 
 //	GPIO_PORTB_DATA_R &= ~LOCK;			// toggle debug pin
-	TIMER3_ICR_R = TIMERA_MIS_MASK;							// clear all A-intr
+	TIMER3_ICR_R = TIMERA_MIS_MASK;						// clear all A-intr
 	return;
 }
 

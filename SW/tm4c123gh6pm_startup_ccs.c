@@ -38,15 +38,15 @@ void ResetISR(void);
 static void NmiSR(void);
 static void FaultISR(void);
 static void UART0Handler(void);
+static void TIMER1BHandler(void);
 /*static void UART1Handler(void);
 static void GPIO_C_Handler(void);
-static void GPIO_F_Handler(void);
 static void TIMER0AHandler(void);
 static void TIMER1AHandler(void);
-static void TIMER1BHandler(void);
 static void TIMER2AHandler(void);*/
 static void TIMER3AHandler(void);
 static void SSI0Handler(void);
+static void GPIO_F_Handler(void);
 //static void TIMER3BHandler(void);
 static void IntDefaultHandler(void);
 
@@ -123,7 +123,7 @@ void (* const g_pfnVectors[])(void) =
 	IntDefaultHandler,                 	    //35 Timer 0 subtimer A
     IntDefaultHandler,                      //36 Timer 0 subtimer B
 	IntDefaultHandler,                      //37 Timer 1 subtimer A
-	IntDefaultHandler,                      //38 Timer 1 subtimer B
+	TIMER1BHandler,                     	//38 Timer 1 subtimer B
 	IntDefaultHandler,                      //39 Timer 2 subtimer A
     IntDefaultHandler,                      //40 Timer 2 subtimer B
     IntDefaultHandler,                      //41 Analog Comparator 0
@@ -131,7 +131,7 @@ void (* const g_pfnVectors[])(void) =
     IntDefaultHandler,                      //43 Analog Comparator 2
     IntDefaultHandler,                      //44 System Control (PLL, OSC, BO)
     IntDefaultHandler,                      //45 FLASH Control
-	IntDefaultHandler,                      //46 GPIO Port F
+	GPIO_F_Handler,                      	//46 GPIO Port F
     IntDefaultHandler,                      //47 N/U GPIO Port G
     IntDefaultHandler,                      //48 N/U GPIO Port H
 	IntDefaultHandler,                      //49 UART2 Rx and Tx
@@ -343,7 +343,6 @@ TIMER3BHandler(void)
 //	Timer3B_ISR();					// process timer3B interrupt
 }*/
 
-
 //*****************************************************************************
 //
 // This is the code that gets called when the processor receives an SSI0 intr.
@@ -355,6 +354,27 @@ SSI0Handler(void)
 	ssi0_isr();					// process ssi rcv interrupt
 }
 
+//*****************************************************************************
+//
+// This is the code that gets called when the processor receives an GPIOF intr.
+//
+//*****************************************************************************
+static void
+GPIO_F_Handler(void)
+{
+	gpiof_isr();					// process gpiof interrupt
+}
+
+//*****************************************************************************
+//
+// This is the code that gets called when the processor receives an TIMER1B intr.
+//
+//*****************************************************************************
+static void
+TIMER1BHandler(void)
+{
+	Timer1B_ISR();
+}
 //*****************************************************************************
 //
 // This is the code that gets called when the processor receives an unexpected
