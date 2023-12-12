@@ -62,6 +62,11 @@ U8	CS2_dmem[LCD_MEMLEN];	// display mem
 // blink on/off memory array
 U8	CS2_bmem[LCD_MEMLEN];	// blink mem
 
+U8	cs1_idx;
+U8	cs2_idx;
+//U8	cs1_idx;
+//U8	cs2_idx;
+
 // segment function LUTs.  The major index is the segment ram array index, the minor index is the
 //		memory bit (0x4, 0x2, or 0x1 masks).  The function parameter is segment "ON" = 1 or "OFF" = 0
 
@@ -157,6 +162,25 @@ U8 err2[7][5] = {
 		{0x1C , 0x83 , 0x80 , 0x87 , 0x00}
 };
 
+U8	seg7[16][3] = {		// 7-seg encoder LUT
+		{3, 5, 3},		// 0
+		{3, 0, 0},		// 1
+		{1, 7, 2},		// 2
+		{3, 7, 0},		// 3
+		{3, 2, 1},		// 4
+		{2, 7, 1},		// 5
+		{2, 7, 3},		// 6
+		{3, 1, 0},		// 7
+		{3, 7, 3},		// 8
+		{3, 7, 1},		// 9
+		{0, 2, 0},		// a
+		{0, 7, 3},		// b
+		{0, 5, 3},		// c
+		{0, 6, 0},		// d
+		{2, 6, 2},		// e
+		{0, 0, 0}		// f
+};
+
 //-----------------------------------------------------------------------------
 // Local Fn Declarations
 //-----------------------------------------------------------------------------
@@ -236,7 +260,7 @@ void process_LCD(U8 iplfl){
 	trig_scan2(MODE_OR);
 	if(change_flag && is_ssito()){
 		kick_ssito();
-		for(i=0x80; i>= OPTROW_FL; i>>=1){
+		for(i=OPTROW_FL; i; i<<=1){
 			switch(i&change_flag){
 			case MAIN7_FL:
 				wrlcd_str(main7, MAIN7_LEN, MAIN7_OFFS);
@@ -298,26 +322,6 @@ void process_LCD(U8 iplfl){
 //-----------------------------------------------------------------------------
 // process_SPI() fetches SPI data and processes cmds/data
 //-----------------------------------------------------------------------------
-U8	cs1_idx;
-U8	cs2_idx;
-U8	seg7[16][3] = {		// 7-seg encoder LUT
-		{3, 5, 3},		// 0
-		{3, 0, 0},		// 1
-		{1, 7, 2},		// 2
-		{3, 7, 0},		// 3
-		{3, 2, 1},		// 4
-		{2, 7, 1},		// 5
-		{2, 7, 3},		// 6
-		{3, 1, 0},		// 7
-		{3, 7, 3},		// 8
-		{3, 7, 1},		// 9
-		{0, 2, 0},		// a
-		{0, 7, 3},		// b
-		{0, 5, 3},		// c
-		{0, 6, 0},		// d
-		{2, 6, 2},		// e
-		{0, 0, 0}		// f
-};
 
 void process_SPI(U8 iplfl){
 	U16	ii;
@@ -325,6 +329,7 @@ void process_SPI(U8 iplfl){
 	U8	csf1;
 	U8	csf2;
 	U8	swdat;
+//	U8	ilast = 0;;
 	U8	i;
 	U8	datcmd;
 	U8	skip1;
@@ -343,6 +348,17 @@ void process_SPI(U8 iplfl){
 		csf2 = i & CS2;
 		datcmd = i & DATA_CMD;
 
+/*		if(csf1){
+			if((csf1 & ilast) == 0){
+				cs1_idx = 0;
+			}
+		}
+		if(csf2){
+			if((csf2 & ilast) == 0){
+				cs2_idx = 0;
+			}
+		}
+		ilast = i;*/
 		// if data & decode7, set up for write
 		if(datcmd){
 			if(csf1){
@@ -388,6 +404,7 @@ void process_SPI(U8 iplfl){
 				case LOAD_PTR:
 				case LOAD_PTR2:
 					cs1_idx = sdata & AMASK;
+					cs1_idx = cs1_idx;
 					break;
 
 				case WR_DMEM:
@@ -407,17 +424,17 @@ void process_SPI(U8 iplfl){
 					////////////
 
 				case WR_BMEM:
-					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL| MODE_WR;
+					CS1_bmem[cs1_idx] = (sdata & BIT_MASK);
 					if(++cs1_idx > 0x1f) cs1_idx = 0;
 					break;
 
 				case OR_BMEM:
-					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR | BLINKFL;
+					CS1_bmem[cs1_idx] |= (sdata & BIT_MASK);
 					if(++cs1_idx > 0x1f) cs1_idx = 0;
 					break;
 
 				case AND_BMEM:
-					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND | BLINKFL;
+					CS1_bmem[cs1_idx] &= (sdata & BIT_MASK);
 					if(++cs1_idx > 0x1f) cs1_idx = 0;
 					break;
 				}
@@ -476,6 +493,7 @@ void process_SPI(U8 iplfl){
 				case LOAD_PTR:
 				case LOAD_PTR2:
 					cs2_idx = sdata & AMASK;
+					cs2_idx = cs2_idx;
 					break;
 
 				case WR_DMEM:
@@ -495,17 +513,17 @@ void process_SPI(U8 iplfl){
 					////////////
 
 				case WR_BMEM:
-					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | BLINKFL| MODE_WR;
-					if(++cs2_idx > 0x1f) cs1_idx = 0;
+					CS2_bmem[cs2_idx] = (sdata & BIT_MASK);
+					if(++cs2_idx > 0x1f) cs2_idx = 0;
 					break;
 
 				case OR_BMEM:
-					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR | BLINKFL;
+					CS2_bmem[cs2_idx] |= (sdata & BIT_MASK);
 					if(++cs2_idx > 0x1f) cs2_idx = 0;
 					break;
 
 				case AND_BMEM:
-					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND | BLINKFL;
+					CS2_bmem[cs2_idx] &= (sdata & BIT_MASK);
 					if(++cs2_idx > 0x1f) cs2_idx = 0;
 					break;
 				}
@@ -4869,16 +4887,19 @@ void trig_scan1(U8 mode){
 				k &= (~m & BIT_MASK);
 				break;
 			}
-			if(!(m & BLINKFL) && (k != memptr[i])){
-				memptr[i] = k;
-				for(j=0; j<3; j++){
-					(*cs1_fn[i][j])(k & 0x01);
-					k >>= 1;
+//			if(!(m & BLINKFL)){
+				if(k != memptr[i]){
+					memptr[i] = k;
+					for(j=0; j<3; j++){
+						(*cs1_fn[i][j])(k & 0x01);
+						k >>= 1;
+					}
 				}
 				CS1_trig[i] = 0;
-			}else{
-				CS1_trig[i] = MODE_OR | CS1_dmem[i];
-			}
+//			}else{
+//				memptr[i] = k;
+//				CS1_trig[i] = MODE_OR | CS1_dmem[i];
+//			}
 		}
 	}
  }
@@ -4893,11 +4914,7 @@ void trig_scan2(U8 mode){
 	for(i=0; i<LCD_MEMLEN; i++){
 		m = CS2_trig[i];
 		if(m){
-			if(m & BLINKFL){
-				memptr = CS2_bmem;
-			}else{
-				memptr = CS2_dmem;
-			}
+			memptr = CS2_dmem;
 			k = memptr[i];
 			switch(m & MODE_MASK){
 			case MODE_OR:
@@ -4916,16 +4933,19 @@ void trig_scan2(U8 mode){
 				k &= (~m & BIT_MASK);
 				break;
 			}
-			if(!(m & BLINKFL) && (k != memptr[i])){
-				memptr[i] = k;
-				for(j=0; j<3; j++){
-					(*cs2_fn[i][j])(k & 0x01);
-					k >>= 1;
+//			if(!(m & BLINKFL)){
+				if(k != memptr[i]){
+					memptr[i] = k;
+					for(j=0; j<3; j++){
+						(*cs2_fn[i][j])(k & 0x01);
+						k >>= 1;
+					}
 				}
 				CS2_trig[i] = 0;
-			}else{
-				CS2_trig[i] = MODE_OR | CS2_dmem[i];
-			}
+//			}else{
+//				memptr[i] = k;
+//				CS2_trig[i] = MODE_OR | CS2_dmem[i];
+//			}
 		}
 	}
 }

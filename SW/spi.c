@@ -130,9 +130,14 @@ U16 get_ssi0(void){
 //
 
 void ssi0_isr(void){
+	U8	si;
 
 	while(SSI0_SR_R & SSI_SR_RNE){							// check if data available
-		ssi0_buf[ssi0_h] = SSI0_DR_R;						// get data, place in buff
+		si = SSI0_DR_R;										// get data, place in buff
+		ssi0_buf[ssi0_h] = si;								// get data, place in buff
+		if(si == 0xe5){
+			si++;
+		}
 		// CS1/CS2/CMD_DATA are inverted when placed in buffer
 		ssi0_status[ssi0_h] = ssi0_meta;					// get CS status, place in stat buff
 		GPIO_PORTF_ICR_R = SCLKE;							// pre-clear int flags
