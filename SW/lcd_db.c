@@ -202,6 +202,16 @@ void process_LCD(U8 iplfl){
 
 	if(iplfl){
 		// initialize LCD and internals
+		for(i=0; i<0x1f; i++){
+			CS1_dmem[i] = 0x00;
+			CS1_bmem[i] = 0x00;
+			CS1_trig[i] = 0x0f;
+			CS2_dmem[i] = 0x00;
+			CS2_bmem[i] = 0x00;
+			CS2_trig[i] = 0x0f;
+		}
+		cs1_idx = 0;
+		cs2_idx = 0;
 		CS1_reg = 0;
 		CS2_reg = 0;
 		lcd_setup();
@@ -256,8 +266,6 @@ void process_LCD(U8 iplfl){
 		}
 	}
 	// if SPI timer expired and change_flag has set bits, update LCD
-	trig_scan1(MODE_OR);
-	trig_scan2(MODE_OR);
 	if(change_flag && is_ssito()){
 		kick_ssito();
 		for(i=OPTROW_FL; i; i<<=1){
@@ -329,249 +337,290 @@ void process_SPI(U8 iplfl){
 	U8	csf1;
 	U8	csf2;
 	U8	swdat;
-//	U8	ilast = 0;;
-	U8	i;
+	static U8	stlast;
+	U8	st;
 	U8	datcmd;
-	U8	skip1;
-	U8	skip2;
+	U8	i;
+	U8	m;
 
 	if(iplfl){
 		// IPL init
+		stlast = 0xff;
 	}
 	while(got_ssi0()){
-		skip1 = 0;
-		skip2 = 0;
 		ii = get_ssi0();
 		sdata = (U8)ii;
-		i = (U8)(ii >> 8);
-		csf1 = i & CS1;
-		csf2 = i & CS2;
-		datcmd = i & DATA_CMD;
+		st = (U8)(ii >> 8);
+		csf1 = st & CS1;
+		csf2 = st & CS2;
+		datcmd = st & DATA_CMD;
 
-/*		if(csf1){
-			if((csf1 & ilast) == 0){
-				cs1_idx = 0;
-			}
-		}
-		if(csf2){
-			if((csf2 & ilast) == 0){
-				cs2_idx = 0;
-			}
-		}
-		ilast = i;*/
 		// if data & decode7, set up for write
 		if(datcmd){
+			// Process CS1 data
 			if(csf1){
 				if(CS1_reg & CS_DECODE7){	// 7-seg decode
-					CS1_trig[cs1_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_WR;
-					CS1_trig[cs1_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_WR;
-					CS1_trig[cs1_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_WR;
+//					m = CS1_dmem[cs1_idx];
+					CS1_dmem[cs1_idx] = seg7[sdata & DMASK][0];
+					CS1_trig[cs1_idx] = 0x0f;
+//					m = CS1_dmem[cs1_idx+1];
+					CS1_dmem[cs1_idx+1] = seg7[sdata & DMASK][1];
+					CS1_trig[cs1_idx+1] = 0x0f;
+//					m = CS1_dmem[cs1_idx+2];
+					CS1_dmem[cs1_idx+2] = seg7[sdata & DMASK][2];
+					CS1_trig[cs1_idx+2] = 0x0f;
 					cs1_idx += 3;
 					if(cs1_idx > 0x1f) cs1_idx = 0;
 				}else{						// no decode
-					CS1_trig[cs1_idx] = ((sdata & DMASK0) >> DSHFT0) | DATA_RDY | MODE_WR;
-					CS1_trig[cs1_idx+1] = ((sdata & DMASK1) >> DSHFT1) | DATA_RDY | MODE_WR;
-					CS1_trig[cs1_idx+2] = ((sdata & DMASK2) >> DSHFT2) | DATA_RDY | MODE_WR;
+//					m = CS1_dmem[cs1_idx];
+					CS1_dmem[cs1_idx] = ((sdata & DMASK0) >> DSHFT0);
+					CS1_trig[cs1_idx] = 0x0f;
+//					m = CS1_dmem[cs1_idx+1];
+					CS1_dmem[cs1_idx+1] = ((sdata & DMASK1) >> DSHFT1);
+					CS1_trig[cs1_idx+1] = 0x0f;
+//EOR changes doesn't work!!!					m = CS1_dmem[cs1_idx+2];
+					CS1_dmem[cs1_idx+2] = ((sdata & DMASK2) >> DSHFT2);
+					CS1_trig[cs1_idx+2] = 0x0f;
 					cs1_idx += 3;
 					if(cs1_idx > 0x1f) cs1_idx = 0;
 				}
-				skip1 = 1;
 			}
+			// Process CS2 data
 			if(csf2){
 				if(CS2_reg & CS_DECODE7){	// 7-seg decode
-					CS2_trig[cs2_idx] = seg7[sdata & DMASK][0] | DATA_RDY | MODE_WR;
-					CS2_trig[cs2_idx+1] = seg7[sdata & DMASK][1] | DATA_RDY | MODE_WR;
-					CS2_trig[cs2_idx+2] = seg7[sdata & DMASK][2] | DATA_RDY | MODE_WR;
+					m = CS2_dmem[cs2_idx];
+					CS2_dmem[cs2_idx] = seg7[sdata & DMASK][0];
+					CS2_trig[cs2_idx] = m ^ CS2_dmem[cs2_idx];
+					m = CS2_dmem[cs2_idx+1];
+					CS2_dmem[cs2_idx+1] = seg7[sdata & DMASK][1];
+					CS2_trig[cs2_idx+1] = m ^ CS2_dmem[cs2_idx+1];
+					m = CS2_dmem[cs2_idx+2];
+					CS2_dmem[cs2_idx+2] = seg7[sdata & DMASK][2];
+					CS2_trig[cs2_idx+2] = m ^ CS2_dmem[cs2_idx+2];
 					cs2_idx += 3;
 					if(cs2_idx > 0x1f) cs2_idx = 0;
 				}else{						// no decode
-					CS2_trig[cs2_idx] = ((sdata & DMASK0) >> DSHFT0) | DATA_RDY | MODE_WR;
-					CS2_trig[cs2_idx+1] = ((sdata & DMASK1) >> DSHFT1) | DATA_RDY | MODE_WR;
-					CS2_trig[cs2_idx+2] = ((sdata & DMASK2) >> DSHFT2) | DATA_RDY | MODE_WR;
+					m = CS2_dmem[cs2_idx];
+					CS2_dmem[cs2_idx] = ((sdata & DMASK0) >> DSHFT0);
+					CS2_trig[cs2_idx] = m ^ CS2_dmem[cs2_idx];
+					m = CS2_dmem[cs2_idx+1];
+					CS2_dmem[cs2_idx+1] = ((sdata & DMASK1) >> DSHFT1);
+					CS2_trig[cs2_idx+1] = m ^ CS2_dmem[cs2_idx+1];
+					m = CS2_dmem[cs2_idx+2];
+					CS2_dmem[cs2_idx+2] = ((sdata & DMASK2) >> DSHFT2);
+					CS2_trig[cs2_idx+2] = m ^ CS2_dmem[cs2_idx+2];
 					cs2_idx += 3;
 					if(cs2_idx > 0x1f) cs2_idx = 0;
 				}
-				skip2 = 1;
 			}
-		}
-		if(csf1 && !skip1){
-			if(sdata & 0xC0){						// is a parametric command?
-				swdat = sdata & 0xf0;				// mask off data to get command
-				switch(swdat){
-				default:
-					break;
+		}else{
+			// Process CS1 cmds
+			if(csf1){
+				if(sdata & 0xC0){						// is a parametric command?
+					swdat = sdata & 0xf0;				// mask off data to get command
+					switch(swdat){
+					default:
+						swdat++;
+						break;
 
-				case LOAD_PTR:
-				case LOAD_PTR2:
-					cs1_idx = sdata & AMASK;
-					cs1_idx = cs1_idx;
-					break;
+					case LOAD_PTR:
+					case LOAD_PTR2:
+						cs1_idx = sdata & AMASK;
+	//					cs1_idx = cs1_idx;
+						break;
 
-				case WR_DMEM:
-					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_WR;
-					if(++cs1_idx > 0x1f) cs1_idx = 0;
-					break;
+					case WR_DMEM:
+						m = CS1_dmem[cs1_idx];
+						CS1_dmem[cs1_idx] = (sdata & BIT_MASK);
+						CS1_trig[cs1_idx] = m ^ CS1_dmem[cs1_idx];
+						if(++cs1_idx > 0x1f) cs1_idx = 0;
+						break;
 
-				case OR_DMEM:
-					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR;
-					if(++cs1_idx > 0x1f) cs1_idx = 0;
-					break;
+					case OR_DMEM:
+						m = CS1_dmem[cs1_idx];
+						CS1_dmem[cs1_idx] |= (sdata & BIT_MASK);
+						CS1_trig[cs1_idx] = m ^ CS1_dmem[cs1_idx];
+						if(++cs1_idx > 0x1f) cs1_idx = 0;
+						break;
 
-				case AND_DMEM:
-					CS1_trig[cs1_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND;
-					if(++cs1_idx > 0x1f) cs1_idx = 0;
-					break;
-					////////////
+					case AND_DMEM:
+						m = CS1_dmem[cs1_idx];
+						CS1_dmem[cs1_idx] &= (sdata & BIT_MASK);
+						CS1_trig[cs1_idx] = m ^ CS1_dmem[cs1_idx];
+						if(++cs1_idx > 0x1f) cs1_idx = 0;
+						break;
+						////////////
 
-				case WR_BMEM:
-					CS1_bmem[cs1_idx] = (sdata & BIT_MASK);
-					if(++cs1_idx > 0x1f) cs1_idx = 0;
-					break;
+					case WR_BMEM:
+						CS1_bmem[cs1_idx] = (sdata & BIT_MASK);
+						if(++cs1_idx > 0x1f) cs1_idx = 0;
+						break;
 
-				case OR_BMEM:
-					CS1_bmem[cs1_idx] |= (sdata & BIT_MASK);
-					if(++cs1_idx > 0x1f) cs1_idx = 0;
-					break;
+					case OR_BMEM:
+						CS1_bmem[cs1_idx] |= (sdata & BIT_MASK);
+						if(++cs1_idx > 0x1f) cs1_idx = 0;
+						break;
 
-				case AND_BMEM:
-					CS1_bmem[cs1_idx] &= (sdata & BIT_MASK);
-					if(++cs1_idx > 0x1f) cs1_idx = 0;
-					break;
-				}
-			}else{
-				switch(sdata){		// not a parametric, use the whole byte to dispatch
-				case WITH_DECODE:
-					CS1_reg |= CS_DECODE7;
-					break;
-
-				case WITHOUT_DECODE:
-					CS1_reg &= ~CS_DECODE7;
-					break;
-
-				case CLR_DMEM:
-					for(i=0; i<0x1f; i++){
-						CS1_trig[i] = 0x0f;
+					case AND_BMEM:
+						CS1_bmem[cs1_idx] &= (sdata & BIT_MASK);
+						if(++cs1_idx > 0x1f) cs1_idx = 0;
+						break;
 					}
-					break;
+				}else{
+					switch(sdata){		// not a parametric, use the whole byte to dispatch
+					case WITH_DECODE:
+						CS1_reg |= CS_DECODE7;
+						break;
 
-				case CLR_BMEM:
-					for(i=0; i<0x1f; i++){
-						CS1_trig[i] = 0x0f | BLINKFL;
+					case WITHOUT_DECODE:
+						CS1_reg &= ~CS_DECODE7;
+						break;
+
+					case CLR_DMEM:
+						for(i=0; i<0x1f; i++){
+							CS1_dmem[i] = 0x00;
+							CS1_trig[i] = 0x0f;
+						}
+						cs1_idx = 0;
+						break;
+
+					case CLR_BMEM:
+						for(i=0; i<0x1f; i++){
+							CS1_bmem[i] = 0x00;
+						}
+						cs1_idx = 0;
+						break;
+
+					case BLINK_SLOW:
+						CS1_reg = (CS1_reg & ~CS_NEBLINK) | CS_SBLINK;
+						break;
+
+					case BLINK_FAST:
+						CS1_reg = (CS1_reg & ~CS_NEBLINK) | CS_FBLINK;
+						break;
+
+					case BLINK_OFF:
+						CS1_reg = (CS1_reg & ~CS_NEBLINK);
+						for(i=0; i<LCD_MEMLEN; i++){
+							CS1_trig[i] = CS1_bmem[i] | MODE_OR;
+						}
+						break;
+
+					case MODE_SET:
+					case DISP_ON:
+					case DISP_OFF:
+					default:
+						break;
 					}
-					break;
-
-				case BLINK_SLOW:
-					CS1_reg = (CS1_reg & ~CS_NEBLINK) | CS_SBLINK;
-					break;
-
-				case BLINK_FAST:
-					CS1_reg = (CS1_reg & ~CS_NEBLINK) | CS_FBLINK;
-					break;
-
-				case BLINK_OFF:
-					CS1_reg = (CS1_reg & ~CS_NEBLINK);
-					for(i=0; i<LCD_MEMLEN; i++){
-						CS1_trig[i] = CS1_bmem[i] | MODE_OR;
-					}
-					break;
-
-				case MODE_SET:
-				case DISP_ON:
-				case DISP_OFF:
-				default:
-					break;
-				}
-			}
-		}
-		if(csf2 && !skip2){
-			if(sdata & 0xC0){						// is a parametric command?
-				swdat = sdata & 0xf0;				// mask off data to get command
-				switch(swdat){
-				default:
-					break;
-
-				case LOAD_PTR:
-				case LOAD_PTR2:
-					cs2_idx = sdata & AMASK;
-					cs2_idx = cs2_idx;
-					break;
-
-				case WR_DMEM:
-					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_WR;
-					if(++cs2_idx > 0x1f) cs2_idx = 0;
-					break;
-
-				case OR_DMEM:
-					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_OR;
-					if(++cs2_idx > 0x1f) cs2_idx = 0;
-					break;
-
-				case AND_DMEM:
-					CS2_trig[cs2_idx] = (sdata & BIT_MASK) | DATA_RDY | MODE_AND;
-					if(++cs2_idx > 0x1f) cs2_idx = 0;
-					break;
-					////////////
-
-				case WR_BMEM:
-					CS2_bmem[cs2_idx] = (sdata & BIT_MASK);
-					if(++cs2_idx > 0x1f) cs2_idx = 0;
-					break;
-
-				case OR_BMEM:
-					CS2_bmem[cs2_idx] |= (sdata & BIT_MASK);
-					if(++cs2_idx > 0x1f) cs2_idx = 0;
-					break;
-
-				case AND_BMEM:
-					CS2_bmem[cs2_idx] &= (sdata & BIT_MASK);
-					if(++cs2_idx > 0x1f) cs2_idx = 0;
-					break;
-				}
-			}else{
-				switch(sdata){		// not a parametric, use the whole byte to dispatch
-				case WITH_DECODE:
-					CS2_reg |= CS_DECODE7;
-					break;
-
-				case WITHOUT_DECODE:
-					CS2_reg &= ~CS_DECODE7;
-					break;
-
-				case CLR_DMEM:
-					for(i=0; i<0x1f; i++){
-						CS2_trig[i] = 0x0f;
-					}
-					break;
-
-				case CLR_BMEM:
-					for(i=0; i<0x1f; i++){
-						CS2_trig[i] = 0x0f | BLINKFL;
-					}
-					break;
-
-				case BLINK_SLOW:
-					CS2_reg = (CS2_reg & ~CS_NEBLINK) | CS_SBLINK;
-					break;
-
-				case BLINK_FAST:
-					CS2_reg = (CS2_reg & ~CS_NEBLINK) | CS_FBLINK;
-					break;
-
-				case BLINK_OFF:
-					CS2_reg = (CS2_reg & ~CS_NEBLINK);
-					for(i=0; i<LCD_MEMLEN; i++){
-						CS2_trig[i] = CS2_bmem[i] | MODE_OR;
-					}
-					break;
-
-				case MODE_SET:
-				case DISP_ON:
-				case DISP_OFF:
-				default:
-					break;
 				}
 			}
+			// Process CS2 cmds
+			if(csf2){
+				if(sdata & 0xC0){						// is a parametric command?
+					swdat = sdata & 0xf0;				// mask off data to get command
+					switch(swdat){
+					default:
+						swdat++;
+						break;
+
+					case LOAD_PTR:
+					case LOAD_PTR2:
+						cs2_idx = sdata & AMASK;
+	//					cs2_idx = cs2_idx;
+						break;
+
+					case WR_DMEM:
+						m = CS2_dmem[cs2_idx];
+						CS2_dmem[cs2_idx] = (sdata & BIT_MASK);
+						CS2_trig[cs2_idx] = m ^ CS2_dmem[cs2_idx];
+						if(++cs2_idx > 0x1f) cs2_idx = 0;
+						break;
+
+					case OR_DMEM:
+						CS2_dmem[cs2_idx] |= (sdata & BIT_MASK);
+						CS2_trig[cs2_idx] = m ^ CS2_dmem[cs2_idx];
+						if(++cs2_idx > 0x1f) cs2_idx = 0;
+						break;
+
+					case AND_DMEM:
+						CS2_dmem[cs2_idx] &= (sdata & BIT_MASK);
+						CS2_trig[cs2_idx] = m ^ CS2_dmem[cs2_idx];
+						if(++cs2_idx > 0x1f) cs2_idx = 0;
+						break;
+						////////////
+
+					case WR_BMEM:
+						CS2_bmem[cs2_idx] = (sdata & BIT_MASK);
+						if(++cs2_idx > 0x1f) cs2_idx = 0;
+						break;
+
+					case OR_BMEM:
+						CS2_bmem[cs2_idx] |= (sdata & BIT_MASK);
+						if(++cs2_idx > 0x1f) cs2_idx = 0;
+						break;
+
+					case AND_BMEM:
+						CS2_bmem[cs2_idx] &= (sdata & BIT_MASK);
+						if(++cs2_idx > 0x1f) cs2_idx = 0;
+						break;
+					}
+				}else{
+					switch(sdata){		// not a parametric, use the whole byte to dispatch
+					case WITH_DECODE:
+						CS2_reg |= CS_DECODE7;
+						break;
+
+					case WITHOUT_DECODE:
+						CS2_reg &= ~CS_DECODE7;
+						break;
+
+					case CLR_DMEM:
+						for(i=0; i<0x1f; i++){
+							CS2_trig[i] = 0x0f;
+							CS2_dmem[i] = 0;
+						}
+						cs2_idx = 0;
+						break;
+
+					case CLR_BMEM:
+						for(i=0; i<0x1f; i++){
+							CS2_trig[i] = 0x0f;
+							CS2_bmem[i] = 0;
+							cs2_idx = 0;
+						}
+						break;
+
+					case BLINK_SLOW:
+						CS2_reg = (CS2_reg & ~CS_NEBLINK) | CS_SBLINK;
+						break;
+
+					case BLINK_FAST:
+						CS2_reg = (CS2_reg & ~CS_NEBLINK) | CS_FBLINK;
+						break;
+
+					case BLINK_OFF:
+						CS2_reg = (CS2_reg & ~CS_NEBLINK);
+						for(i=0; i<LCD_MEMLEN; i++){
+							CS2_trig[i] = CS2_bmem[i] | MODE_OR;
+						}
+						break;
+
+					case MODE_SET:
+					case DISP_ON:
+					case DISP_OFF:
+					default:
+						break;
+					}
+				}
+			}
 		}
+		if((stlast ^ st) & CS1){
+			trig_scan1(MODE_OR);
+		}
+		if((stlast ^ st) & CS2){
+			trig_scan2(MODE_OR);
+		}
+		stlast = st;
 	}
 	return;
 }
@@ -4859,47 +4908,19 @@ void trig_scan1(U8 mode){
 	U8	j;
 	U8	k;
 	U8	m;
-	U8*	memptr;
 
 	for(i=0; i<LCD_MEMLEN; i++){
 		m = CS1_trig[i];
+		k = CS1_dmem[i];
 		if(m){
-			if(m & BLINKFL){
-				memptr = CS1_bmem;
-			}else{
-				memptr = CS1_dmem;
-			}
-			k = memptr[i];
-			switch(m & MODE_MASK){
-			case MODE_OR:
-				k |= (m & BIT_MASK);
-				break;
-
-			case MODE_AND:
-				k &= (m & BIT_MASK);
-				break;
-
-			case MODE_WR:
-				k = (m & BIT_MASK);
-				break;
-
-			default:	// clear
-				k &= (~m & BIT_MASK);
-				break;
-			}
-//			if(!(m & BLINKFL)){
-				if(k != memptr[i]){
-					memptr[i] = k;
-					for(j=0; j<3; j++){
-						(*cs1_fn[i][j])(k & 0x01);
-						k >>= 1;
-					}
+			for(j=0; j<3; j++){
+				if(m & 0x1){
+					(*cs1_fn[i][j])(k & 0x01);
+					k >>= 1;
+					m >>= 1;
 				}
-				CS1_trig[i] = 0;
-//			}else{
-//				memptr[i] = k;
-//				CS1_trig[i] = MODE_OR | CS1_dmem[i];
-//			}
+			}
+			CS1_trig[i] = 0;
 		}
 	}
  }
@@ -4909,43 +4930,19 @@ void trig_scan2(U8 mode){
 	U8	j;
 	U8	k;
 	U8	m;
-	U8*	memptr;
 
 	for(i=0; i<LCD_MEMLEN; i++){
 		m = CS2_trig[i];
+		k = CS2_dmem[i];
 		if(m){
-			memptr = CS2_dmem;
-			k = memptr[i];
-			switch(m & MODE_MASK){
-			case MODE_OR:
-				k |= (m & BIT_MASK);
-				break;
-
-			case MODE_AND:
-				k &= (m & BIT_MASK);
-				break;
-
-			case MODE_WR:
-				k = (m & BIT_MASK);
-				break;
-
-			default:	// clear
-				k &= (~m & BIT_MASK);
-				break;
-			}
-//			if(!(m & BLINKFL)){
-				if(k != memptr[i]){
-					memptr[i] = k;
-					for(j=0; j<3; j++){
-						(*cs2_fn[i][j])(k & 0x01);
-						k >>= 1;
-					}
+			for(j=0; j<3; j++){
+				if(m & 0x1){
+					(*cs2_fn[i][j])(k & 0x01);
+					k >>= 1;
+					m >>= 1;
 				}
-				CS2_trig[i] = 0;
-//			}else{
-//				memptr[i] = k;
-//				CS2_trig[i] = MODE_OR | CS2_dmem[i];
-//			}
+			}
+			CS2_trig[i] = 0;
 		}
 	}
 }

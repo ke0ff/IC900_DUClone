@@ -208,11 +208,11 @@
 #define sparePD4		0x10		// in	*						(usb, J9)
 #define sparePD5		0x20		// in	*						(usb, J9)
 #define sparePD6		0x40		// in	J4-08					qei0A
-#define sparePD7		0x80		// in	J4-09					qei0B
+#define sparePD7		0x80		// out	J4-09					qei0B
 
-#define PORTD_DIRV		(LCD_FS|LCD_RVS)
+#define PORTD_DIRV		(LCD_FS|LCD_RVS|sparePD7)
 #define	PORTD_DENV		(0xff)
-#define	PORTD_PURV		~(LCD_FS|LCD_RVS|BUSYn)
+#define	PORTD_PURV		~(LCD_FS|LCD_RVS|BUSYn|sparePD7)
 #define	PORTD_INIT		(LCD_FS|LCD_RVS)
 
 // Port E defines

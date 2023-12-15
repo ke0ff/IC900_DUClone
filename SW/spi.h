@@ -21,7 +21,7 @@
 // Processor I/O assignments
 // ...see init.h
 
-#define	BITRATE		1250000L
+#define	BITRATE		2000000L
 #define	CPSDVSR		64L
 #define	SCRVAL		((SYSCLK/(CPSDVSR * BITRATE))-1)
 
@@ -44,7 +44,7 @@
 // Global Fns
 //-----------------------------------------------------------------------------
 
-void dbg_spirx(U8* sptr, U8 len, U8 buf);
+void dbg_spirx(U8* sptr, U8 len, U8* buf);
 
 
 void init_ssi0(void);

@@ -25,7 +25,7 @@
 
 // ******************************************************************
 // defines
-#define	SPI_LEN		256
+#define	SPI_LEN		250
 #define	SPI_OVFLW	0x80
 
 // ******************************************************************
@@ -89,19 +89,15 @@ void init_ssi0(void)
 	return;
 }
 
-void dbg_spirx(U8* sptr, U8 len, U8 buf){
+void dbg_spirx(U8* sptr, U8 len, U8* buf){
 	U8	i;
 
 	for(i=0; i<len; i++){
 		ssi0_buf[i] = *sptr++;
-		if(buf==1){
-			ssi0_status[i] = CS1;
-		}else{
-			ssi0_status[i] = CS2;
-		}
+		ssi0_status[i] = *buf++;
 	}
-	ssi0_t = 0;
-	ssi0_h = len;
+//	ssi0_t = 0;
+	ssi0_h += len;
 }
 
 //////////////////
@@ -121,7 +117,7 @@ U16 get_ssi0(void){
 
 	ii = (U16)ssi0_status[ssi0_t] << 8;
 	ii |= (U16)ssi0_buf[ssi0_t] & 0xff;
-	if(ssi0_t++ == (SPI_LEN-1)) ssi0_t = 0;
+	if(ssi0_t++ == (SPI_LEN)) ssi0_t = 0;
 	return ii;
 }
 
@@ -135,20 +131,24 @@ void ssi0_isr(void){
 	while(SSI0_SR_R & SSI_SR_RNE){							// check if data available
 		si = SSI0_DR_R;										// get data, place in buff
 		ssi0_buf[ssi0_h] = si;								// get data, place in buff
-		if(si == 0xe5){
-			si++;
+		if((si == 0xd0) && (ssi0_meta & CS2)){
+			if(ssi0_buf[ssi0_h-1] == 0xfe){
+				GPIO_PORTD_DATA_R ^= sparePD7;
+				GPIO_PORTD_DATA_R ^= sparePD7;
+				si++;
+			}
 		}
 		// CS1/CS2/CMD_DATA are inverted when placed in buffer
 		ssi0_status[ssi0_h] = ssi0_meta;					// get CS status, place in stat buff
 		GPIO_PORTF_ICR_R = SCLKE;							// pre-clear int flags
 		GPIO_PORTF_IM_R |= SCLKE;							// enable edge intr
-		if(ssi0_h++ == (SPI_LEN-1)){
+		if(ssi0_h++ == (SPI_LEN)){
 			ssi0_h = 0;
 		}
 	}
 	if(ssi0_h == ssi0_t){
 		ssi0_statreg |= SPI_OVFLW;
-		if(ssi0_t++ == (SPI_LEN-1)){
+		if(ssi0_t++ == (SPI_LEN)){
 			ssi0_t = 0;
 		}
 	}

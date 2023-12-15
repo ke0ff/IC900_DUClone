@@ -262,6 +262,7 @@ U8 str_chks(char* sptr);
 U32 dpl_calc(U16 dplcode);
 U8 cadd(U16 dplcode, U8 index);
 void putOK(U8 tf);
+void copbuf(void);
 
 //=============================================================================
 // CLI cmd processor entry point
@@ -544,7 +545,7 @@ volatile	char	pr = FALSE;				// R flag (set if <wsp>-R<wsp> found in args)
 							obuf[0] = LOAD_PTR | i;
 							obuf[1] = WITHOUT_DECODE;
 							obuf[2] = WR_DMEM | j;
-							dbg_spirx((U8*)obuf, 3, k);
+//							dbg_spirx((U8*)obuf, 3, k);
 							sprintf(obuf,"seg %d: %02x  %d", k, i, j);
 							putsQ(obuf);
 							process_SPI(0);
@@ -567,18 +568,7 @@ volatile	char	pr = FALSE;				// R flag (set if <wsp>-R<wsp> found in args)
 					}
 					if(ps){
 //						process_LCD(0xff);
-						obuf[0] = LOAD_PTR | 0x0a;
-						obuf[1] = WITH_DECODE;
-						obuf[2] = 0;
-						obuf[3] = 0;
-						obuf[4] = 0;
-						obuf[5] = 2;
-						obuf[6] = 9;
-						obuf[7] = 2;
-						obuf[8] = WITHOUT_DECODE;
-						obuf[9] = LOAD_PTR | 0x1c;
-						obuf[10] = WR_DMEM | 0x01;
-						dbg_spirx((U8*)obuf, 11, 1);
+						copbuf();
 						putsQ("spi dvt, ESC to quit...");
 						for(i=0; i<15; i++){
 							process_SPI(0);
@@ -1414,6 +1404,19 @@ float temp_float(U16 k){
 		fa *= -1;
 	}
 	return fa;
+}
+
+void copbuf(void){
+	U8	i;
+//	U8	j;
+	U8	tb[] =	  { 0xe6, 0x14, 0x00, 0xe8, 0xb0, 0xfb, 0x14, 0x00, 0xfd, 0xb0,
+					0xe5, 0xc0, 0xfc, 0x81 };
+
+	U8	tb2[] =	  { (U8)~0xa0, (U8)~0xa0, (U8)~0x20, (U8)~0xa0, (U8)~0xa0, (U8)~0xc0, (U8)~0xc0, (U8)~0x40, (U8)~0xc0, (U8)~0xc0,
+			(U8)~0xa0, (U8)~0xa0, (U8)~0xa0, (U8)~0xa0 };
+
+	i = sizeof(tb);
+	dbg_spirx(tb, i, tb2);
 }
 
 // eof
