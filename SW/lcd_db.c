@@ -64,8 +64,7 @@ U8	CS2_bmem[LCD_MEMLEN];	// blink mem
 
 U8	cs1_idx;
 U8	cs2_idx;
-//U8	cs1_idx;
-//U8	cs2_idx;
+U8	blinker;
 
 // segment function LUTs.  The major index is the segment ram array index, the minor index is the
 //		memory bit (0x4, 0x2, or 0x1 masks).  The function parameter is segment "ON" = 1 or "OFF" = 0
@@ -198,7 +197,7 @@ void process_LCD(U8 iplfl){
 			U8	j;
 			U8	m;
 			U8	k;
-	static	U8	blinker;
+			U8	b;
 
 	if(iplfl){
 		// initialize LCD and internals
@@ -220,24 +219,17 @@ void process_LCD(U8 iplfl){
 		change_flag = MAIN7_FL|SUB7_FL|MAINSM_FL|SUBSM_FL|OPTROW_FL;
 		blinker = 0;
 	}
-	if((CS1_reg|CS2_reg) & CS_NEBLINK){					// if blink enabled...
-		if(is_blink()){									// and a new blink cycle has triggered
+	b = is_blink();
+	if(b){
+		if(CS1_reg & CS_NEBLINK){						// if blink enabled...
 			// process blink
-			if(blinker&0x01){							// blink segments = ON
+			if(blinker){								// blink segments = ON
 				for(i=0; i<LCD_MEMLEN; i++){
 					m = CS1_bmem[i] & CS1_dmem[i];
 					if(m){
 						for(j=0; j<3; j++){
 							k = m & 0x01;
 							if(k) (*cs1_fn[i][j])(k);
-							m >>= 1;
-						}
-					}
-					m = CS2_bmem[i] & CS2_dmem[i];
-					if(m){
-						for(j=0; j<3; j++){
-							k = m & 0x01;
-							if(k) (*cs2_fn[i][j])(k);
 							m >>= 1;
 						}
 					}
@@ -252,6 +244,24 @@ void process_LCD(U8 iplfl){
 							m >>= 1;
 						}
 					}
+				}
+			}
+		}
+		if(CS2_reg & CS_NEBLINK){						// if blink enabled...
+			// process blink
+			if(blinker){								// blink segments = ON
+				for(i=0; i<LCD_MEMLEN; i++){
+					m = CS2_bmem[i] & CS2_dmem[i];
+					if(m){
+						for(j=0; j<3; j++){
+							k = m & 0x01;
+							if(k) (*cs2_fn[i][j])(k);
+							m >>= 1;
+						}
+					}
+				}
+			}else{										// blink segments = OFF
+				for(i=0; i<LCD_MEMLEN; i++){
 					m = CS2_bmem[i];
 					if(m){
 						for(j=0; j<3; j++){
@@ -262,12 +272,12 @@ void process_LCD(U8 iplfl){
 					}
 				}
 			}
-			blinker++;
 		}
+		blinker ^= 0x01;
 	}
 	// if SPI timer expired and change_flag has set bits, update LCD
-	if(change_flag && is_ssito()){
-		kick_ssito();
+	if((change_flag && get_csseg()) || b){
+//		kick_ssito();
 		for(i=OPTROW_FL; i; i<<=1){
 			switch(i&change_flag){
 			case MAIN7_FL:
@@ -341,7 +351,7 @@ void process_SPI(U8 iplfl){
 	U8	st;
 	U8	datcmd;
 	U8	i;
-	U8	m;
+//	U8	m;
 
 	if(iplfl){
 		// IPL init
@@ -388,27 +398,29 @@ void process_SPI(U8 iplfl){
 			// Process CS2 data
 			if(csf2){
 				if(CS2_reg & CS_DECODE7){	// 7-seg decode
-					m = CS2_dmem[cs2_idx];
+//					m = CS2_dmem[cs2_idx];
 					CS2_dmem[cs2_idx] = seg7[sdata & DMASK][0];
-					CS2_trig[cs2_idx] = m ^ CS2_dmem[cs2_idx];
-					m = CS2_dmem[cs2_idx+1];
+					CS2_trig[cs2_idx] = 0x0f; //m ^ CS2_dmem[cs2_idx];
+
+//					m = CS2_dmem[cs2_idx+1];
 					CS2_dmem[cs2_idx+1] = seg7[sdata & DMASK][1];
-					CS2_trig[cs2_idx+1] = m ^ CS2_dmem[cs2_idx+1];
-					m = CS2_dmem[cs2_idx+2];
+					CS2_trig[cs2_idx+1] = 0x0f;
+
+//					m = CS2_dmem[cs2_idx+2];
 					CS2_dmem[cs2_idx+2] = seg7[sdata & DMASK][2];
-					CS2_trig[cs2_idx+2] = m ^ CS2_dmem[cs2_idx+2];
+					CS2_trig[cs2_idx+2] = 0x0f;
 					cs2_idx += 3;
 					if(cs2_idx > 0x1f) cs2_idx = 0;
 				}else{						// no decode
-					m = CS2_dmem[cs2_idx];
+//					m = CS2_dmem[cs2_idx];
 					CS2_dmem[cs2_idx] = ((sdata & DMASK0) >> DSHFT0);
-					CS2_trig[cs2_idx] = m ^ CS2_dmem[cs2_idx];
-					m = CS2_dmem[cs2_idx+1];
+					CS2_trig[cs2_idx] = 0x0f;
+//					m = CS2_dmem[cs2_idx+1];
 					CS2_dmem[cs2_idx+1] = ((sdata & DMASK1) >> DSHFT1);
-					CS2_trig[cs2_idx+1] = m ^ CS2_dmem[cs2_idx+1];
-					m = CS2_dmem[cs2_idx+2];
+					CS2_trig[cs2_idx+1] = 0x0f;
+//					m = CS2_dmem[cs2_idx+2];
 					CS2_dmem[cs2_idx+2] = ((sdata & DMASK2) >> DSHFT2);
-					CS2_trig[cs2_idx+2] = m ^ CS2_dmem[cs2_idx+2];
+					CS2_trig[cs2_idx+2] = 0x0f;
 					cs2_idx += 3;
 					if(cs2_idx > 0x1f) cs2_idx = 0;
 				}
@@ -426,27 +438,32 @@ void process_SPI(U8 iplfl){
 					case LOAD_PTR:
 					case LOAD_PTR2:
 						cs1_idx = sdata & AMASK;
-	//					cs1_idx = cs1_idx;
 						break;
 
 					case WR_DMEM:
-						m = CS1_dmem[cs1_idx];
+//						m = CS1_dmem[cs1_idx];
 						CS1_dmem[cs1_idx] = (sdata & BIT_MASK);
-						CS1_trig[cs1_idx] = m ^ CS1_dmem[cs1_idx];
+						if(!(CS1_dmem[cs1_idx] & CS1_bmem[cs1_idx]) || blinker){
+							CS1_trig[cs1_idx] = 0x0f;
+						}
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
 						break;
 
 					case OR_DMEM:
-						m = CS1_dmem[cs1_idx];
+//						m = CS1_dmem[cs1_idx];
 						CS1_dmem[cs1_idx] |= (sdata & BIT_MASK);
-						CS1_trig[cs1_idx] = m ^ CS1_dmem[cs1_idx];
+						if(!(CS1_dmem[cs1_idx] & CS1_bmem[cs1_idx]) || blinker){
+							CS1_trig[cs1_idx] = 0x0f;
+						}
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
 						break;
 
 					case AND_DMEM:
-						m = CS1_dmem[cs1_idx];
+//						m = CS1_dmem[cs1_idx];
 						CS1_dmem[cs1_idx] &= (sdata & BIT_MASK);
-						CS1_trig[cs1_idx] = m ^ CS1_dmem[cs1_idx];
+						if(!(CS1_dmem[cs1_idx] & CS1_bmem[cs1_idx]) || blinker){
+							CS1_trig[cs1_idx] = 0x0f;
+						}
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
 						break;
 						////////////
@@ -526,25 +543,29 @@ void process_SPI(U8 iplfl){
 					case LOAD_PTR:
 					case LOAD_PTR2:
 						cs2_idx = sdata & AMASK;
-	//					cs2_idx = cs2_idx;
 						break;
 
 					case WR_DMEM:
-						m = CS2_dmem[cs2_idx];
 						CS2_dmem[cs2_idx] = (sdata & BIT_MASK);
-						CS2_trig[cs2_idx] = m ^ CS2_dmem[cs2_idx];
+						if(!(CS2_dmem[cs2_idx] & CS2_bmem[cs2_idx]) || blinker){
+							CS2_trig[cs2_idx] = 0x0f;
+						}
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
 						break;
 
 					case OR_DMEM:
 						CS2_dmem[cs2_idx] |= (sdata & BIT_MASK);
-						CS2_trig[cs2_idx] = m ^ CS2_dmem[cs2_idx];
+						if(!(CS2_dmem[cs2_idx] & CS2_bmem[cs2_idx]) || blinker){
+							CS2_trig[cs2_idx] = 0x0f;
+						}
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
 						break;
 
 					case AND_DMEM:
 						CS2_dmem[cs2_idx] &= (sdata & BIT_MASK);
-						CS2_trig[cs2_idx] = m ^ CS2_dmem[cs2_idx];
+						if(!(CS2_dmem[cs2_idx] & CS2_bmem[cs2_idx]) || blinker){
+							CS2_trig[cs2_idx] = 0x0f;
+						}
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
 						break;
 						////////////
@@ -4906,19 +4927,22 @@ void trig_fill(U8 idx, U8 data, U8 chsel){
 void trig_scan1(U8 mode){
 	U8	i;
 	U8	j;
-	U8	k;
-	U8	m;
+	U8	bm;
+	U8	dm;
+	U8	trg;
 
 	for(i=0; i<LCD_MEMLEN; i++){
-		m = CS1_trig[i];
-		k = CS1_dmem[i];
-		if(m){
+		trg = CS1_trig[i];
+		dm = CS1_dmem[i];
+		bm = CS1_bmem[i];
+		if(trg){
 			for(j=0; j<3; j++){
-				if(m & 0x1){
-					(*cs1_fn[i][j])(k & 0x01);
-					k >>= 1;
-					m >>= 1;
+				if( ((trg&1)&&!(bm&1)&&!blinker) || ((trg&1)&&!(bm&1)&&blinker) || ((trg&1)&&(bm&1)&&blinker) ){
+					(*cs1_fn[i][j])(dm & 0x01);
 				}
+				dm >>= 1;
+				bm >>= 1;
+				trg >>= 1;
 			}
 			CS1_trig[i] = 0;
 		}
@@ -4928,19 +4952,21 @@ void trig_scan1(U8 mode){
 void trig_scan2(U8 mode){
 	U8	i;
 	U8	j;
-	U8	k;
-	U8	m;
+	U8	bm;
+	U8	dm;
+	U8	trg;
 
 	for(i=0; i<LCD_MEMLEN; i++){
-		m = CS2_trig[i];
-		k = CS2_dmem[i];
-		if(m){
+		trg = CS2_trig[i];
+		dm = CS2_dmem[i];
+		if(trg){
 			for(j=0; j<3; j++){
-				if(m & 0x1){
-					(*cs2_fn[i][j])(k & 0x01);
-					k >>= 1;
-					m >>= 1;
+				if( ((trg&1)&&!(bm&1)&&!blinker) || ((trg&1)&&!(bm&1)&&blinker) || ((trg&1)&&(bm&1)&&blinker) ){
+					(*cs2_fn[i][j])(dm & 0x01);
 				}
+				dm >>= 1;
+				bm >>= 1;
+				trg >>= 1;
 			}
 			CS2_trig[i] = 0;
 		}

@@ -18,6 +18,14 @@
 //-----------------------------------------------------------------------------
 // Definitions
 //-----------------------------------------------------------------------------
+
+#define	BBSPI			// enable bit-bang SPI
+
+// spi defines
+#define	SPI_LEN		256
+#define	SPI_OVFLW	0x80
+#define	SPI_CSSEG	0x40
+
 // Processor I/O assignments
 // ...see init.h
 
@@ -48,6 +56,7 @@ void dbg_spirx(U8* sptr, U8 len, U8* buf);
 
 
 void init_ssi0(void);
+U8 get_csseg(void);
 U8 got_ssi0(void);
 U16 get_ssi0(void);
 void ssi0_isr(void);

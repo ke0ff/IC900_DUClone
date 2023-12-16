@@ -25,14 +25,17 @@
 
 // ******************************************************************
 // defines
-#define	SPI_LEN		250
-#define	SPI_OVFLW	0x80
 
 // ******************************************************************
 // declarations
 //U8 shift_spi(U8 dato);
 //void open_nvr(void);
 
+// BBSPI regs
+#ifdef BBSPI
+			U8	spidr;
+			U8	spimsk;
+#endif
 // SPI input buffer
 			U8	ssi0_buf[SPI_LEN];		// data buff
 			U8	ssi0_status[SPI_LEN];	// cs/status buff
@@ -52,15 +55,32 @@ volatile	U32	ssitimer;				// ssi timer
 //
 void init_ssi0(void)
 {
-	volatile U8	i;
+//	volatile U8	i;
 
+	ssi0_statreg = 0;
+	ssi0_h = 0;
+	ssi0_t = 0;
+	ssi0_meta = 0;
+
+#ifdef BBSPI
+	spidr = 0;
+	spimsk = 0x80;
+	// config SCLK edge ISR
+	GPIO_PORTA_IM_R = 0;
+	GPIO_PORTA_IEV_R |= SCLK;								// rising edge
+	GPIO_PORTA_IBE_R &= ~SCLK;								// one edge
+	GPIO_PORTA_IS_R &= ~SCLK;								// edge ints
+	GPIO_PORTA_ICR_R = 0xff;								// clear int flags
+	GPIO_PORTA_IM_R = SCLK;
+	ssitimer = 0;
+	NVIC_EN0_R = NVIC_EN0_GPIOA;							// enable GPIOC intr in the NVIC_EN regs
+#endif
+
+#ifndef BBSPI
 	SYSCTL_RCGCSSI_R |= SYSCTL_RCGCSSI_R0;					// activate SSI0
 	GPIO_PORTA_AFSEL_R |= SCLK|MOSI|CSS;					// enable alt funct on PA2/4
 	GPIO_PORTA_PCTL_R |= GPIO_PCTL_PA3_SSI0FSS | GPIO_PCTL_PA2_SSI0CLK | GPIO_PCTL_PA4_SSI0RX;
 	GPIO_PORTA_AMSEL_R &= ~(SCLK|CSS|CS1|CS2|MOSI);			// disable analog functionality on PQ*/
-	ssi0_statreg = 0;
-	ssi0_h = 0;
-	ssi0_t = 0;
 	SSI0_CR1_R = 0;											// disable SSI, master mode
 	SSI0_CPSR_R = CPSDVSR;
 	// SCR = [15:8], SPH[7] = 1, SPO[6] = 1, Freescale, DSS = 7 (8-bit data)
@@ -74,7 +94,6 @@ void init_ssi0(void)
 	}
 	// config SCLK edge ISR
 	i = GPIO_PORTF_IM_R;									// disable edge intr
-	ssi0_meta = 0;
 	GPIO_PORTF_IM_R = 0;
 	GPIO_PORTF_IEV_R |= SCLKE;								// rising edge
 	GPIO_PORTF_IBE_R &= ~SCLKE;								// one edge
@@ -84,8 +103,9 @@ void init_ssi0(void)
 	GPIO_PORTF_IM_R = i;
 	ssitimer = 0;
 	NVIC_EN0_R = NVIC_EN0_GPIOF;							// enable GPIOC intr in the NVIC_EN regs
-
 	NVIC_EN0_R = NVIC_EN0_SSI0;								// enable SSI0 isr
+#endif
+
 	return;
 }
 
@@ -98,6 +118,20 @@ void dbg_spirx(U8* sptr, U8 len, U8* buf){
 	}
 //	ssi0_t = 0;
 	ssi0_h += len;
+}
+
+//////////////////
+// get_csseg returns true if CSSEG set.  Clears CCSEG
+//
+U8 get_csseg(void){
+
+	if(ssi0_statreg & SPI_CSSEG){
+		NVIC_DIS0_R = NVIC_EN0_GPIOA;							// disable GPIOA intr in the NVIC_EN regs
+		ssi0_statreg &= ~SPI_CSSEG;
+		NVIC_EN0_R = NVIC_EN0_GPIOA;							// re-enable GPIOA intr in the NVIC_EN regs
+		return 1;
+	}
+	return 0;
 }
 
 //////////////////
@@ -117,7 +151,8 @@ U16 get_ssi0(void){
 
 	ii = (U16)ssi0_status[ssi0_t] << 8;
 	ii |= (U16)ssi0_buf[ssi0_t] & 0xff;
-	if(ssi0_t++ == (SPI_LEN)) ssi0_t = 0;
+//	if(ssi0_t++ == (SPI_LEN)) ssi0_t = 0;
+	ssi0_t++;
 	return ii;
 }
 
@@ -166,12 +201,42 @@ void ssi0_isr(void){
 //-----------------------------------------------------------------------------
 void gpiof_isr(void){
 
+#ifndef BBSPI
 	// clear int flags
 	GPIO_PORTF_ICR_R = SCLKE;
 	// get CS status & cmd, place in stat buff
 	ssi0_meta = ~GPIO_PORTA_DATA_R & (CS2|CS1|CMD_DATA) | DRFF;
 	// disable gpiof
 	GPIO_PORTF_IM_R &= ~SCLKE;
+#endif
+
+#ifdef BBSPI
+	if(GPIO_PORTA_RIS_R & CSS){
+		spimsk = 0x80;
+		spidr = 0;
+		ssi0_statreg |= SPI_CSSEG;
+	}
+	if(GPIO_PORTA_DATA_R & MOSI){
+		spidr |= spimsk;
+	}
+	spimsk >>= 1;
+	if(!spimsk){
+//		GPIO_PORTD_DATA_R |= sparePD7;
+		// get CS status & cmd, place in stat buff
+		ssi0_status[ssi0_h] = ~GPIO_PORTA_DATA_R & (CS2|CS1|CMD_DATA);
+		ssi0_buf[ssi0_h] = spidr;								// get data, place in buff
+		spimsk = 0x80;
+		spidr = 0;
+		ssi0_h++;
+		if(ssi0_h == ssi0_t){
+			ssi0_statreg |= SPI_OVFLW;
+			ssi0_t++;
+		}
+//		GPIO_PORTD_DATA_R &= ~sparePD7;
+	}
+	GPIO_PORTA_ICR_R = SCLK|CSS;
+#endif
+
 	return;
 }
 

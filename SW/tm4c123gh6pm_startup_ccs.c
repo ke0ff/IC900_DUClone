@@ -101,7 +101,7 @@ void (* const g_pfnVectors[])(void) =
     IntDefaultHandler,                      //14 The PendSV handler
     IntDefaultHandler,                      //15 The SysTick handler
     //int vectors
-    IntDefaultHandler,                      //16 GPIO Port A
+	GPIO_F_Handler,                      	//16 GPIO Port A
 	IntDefaultHandler,                      //17 GPIO Port B
 	IntDefaultHandler,     	               	//18 GPIO Port C
 	IntDefaultHandler,                     	//19 GPIO Port D
