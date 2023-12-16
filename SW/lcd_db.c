@@ -350,7 +350,8 @@ void process_SPI(U8 iplfl){
 	static U8	stlast;
 	U8	st;
 	U8	datcmd;
-	U8	i;
+	U8	i=0;
+	U8	pd;
 //	U8	m;
 
 	if(iplfl){
@@ -364,6 +365,10 @@ void process_SPI(U8 iplfl){
 		csf1 = st & CS1;
 		csf2 = st & CS2;
 		datcmd = st & DATA_CMD;
+
+		if(csf1 && csf2){  //!!! debug
+			GPIO_PORTD_DATA_R ^= sparePD7;
+		}
 
 		// if data & decode7, set up for write
 		if(datcmd){
@@ -441,45 +446,71 @@ void process_SPI(U8 iplfl){
 						break;
 
 					case WR_DMEM:
-//						m = CS1_dmem[cs1_idx];
-						CS1_dmem[cs1_idx] = (sdata & BIT_MASK);
-						if(!(CS1_dmem[cs1_idx] & CS1_bmem[cs1_idx]) || blinker){
-							CS1_trig[cs1_idx] = 0x0f;
+						pd = sdata & BIT_MASK;								// calculate the proposed result
+						i = CS1_dmem[cs1_idx];								// hold old value in temp
+						if(pd != i){										// only process if there was a change
+							CS1_dmem[cs1_idx] = pd;
+							// if not blinking or blinker is on, set trigger on changed bits
+							if(!(pd & CS1_bmem[cs1_idx]) || blinker){
+								pd ^= i;									// calculate changed bits
+								CS1_trig[cs1_idx] |= pd;					// set trigger
+							}
 						}
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
 						break;
 
 					case OR_DMEM:
-//						m = CS1_dmem[cs1_idx];
-						CS1_dmem[cs1_idx] |= (sdata & BIT_MASK);
-						if(!(CS1_dmem[cs1_idx] & CS1_bmem[cs1_idx]) || blinker){
-							CS1_trig[cs1_idx] = 0x0f;
+						pd = CS1_dmem[cs1_idx] | (sdata & BIT_MASK);		// calculate the proposed result
+						i = CS1_dmem[cs1_idx];								// hold old value in temp
+						if(pd != i){										// only process if there was a change
+							CS1_dmem[cs1_idx] = pd;
+							// if not blinking or blinker is on, set trigger on changed bits
+							if(!(pd & CS1_bmem[cs1_idx]) || blinker){
+								pd ^= i;									// calculate changed bits
+								CS1_trig[cs1_idx] |= pd;					// set trigger
+							}
 						}
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
 						break;
 
 					case AND_DMEM:
-//						m = CS1_dmem[cs1_idx];
-						CS1_dmem[cs1_idx] &= (sdata & BIT_MASK);
-						if(!(CS1_dmem[cs1_idx] & CS1_bmem[cs1_idx]) || blinker){
-							CS1_trig[cs1_idx] = 0x0f;
+						pd = CS1_dmem[cs1_idx] & (sdata & BIT_MASK);		// calculate the proposed result
+						i = CS1_dmem[cs1_idx];								// hold old value in temp
+						if(pd != i){										// only process if there was a change
+							CS1_dmem[cs1_idx] = pd;
+							// if not blinking or blinker is on, set trigger on changed bits
+							if(!(pd & CS1_bmem[cs1_idx]) || blinker){
+								pd ^= i;									// calculate changed bits
+								CS1_trig[cs1_idx] |= pd;					// set trigger
+							}
 						}
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
 						break;
 						////////////
 
 					case WR_BMEM:
+						pd = CS1_bmem[cs1_idx] ^ (sdata & BIT_MASK);		// calculate changed bits
 						CS1_bmem[cs1_idx] = (sdata & BIT_MASK);
+						pd &= ~(sdata & BIT_MASK);							// calculate cleared bits
+						CS1_trig[cs1_idx] |= pd;							// set trigger
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
 						break;
 
 					case OR_BMEM:
+						pd = CS1_bmem[cs1_idx] | (sdata & BIT_MASK);		// calc changed bits
+						pd ^= CS1_bmem[cs1_idx];
 						CS1_bmem[cs1_idx] |= (sdata & BIT_MASK);
+						pd &= ~(sdata & BIT_MASK);							// claculate cleared bits
+						CS1_trig[cs1_idx] |= pd;							// set trigger
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
 						break;
 
 					case AND_BMEM:
+						pd = CS1_bmem[cs1_idx] & (sdata & BIT_MASK);		// calc changed bits
+						pd ^= CS1_bmem[cs1_idx];
 						CS1_bmem[cs1_idx] &= (sdata & BIT_MASK);
+						pd &= ~(sdata & BIT_MASK);							// claculate cleared bits
+						CS1_trig[cs1_idx] |= pd;							// set trigger
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
 						break;
 					}
@@ -543,45 +574,77 @@ void process_SPI(U8 iplfl){
 					case LOAD_PTR:
 					case LOAD_PTR2:
 						cs2_idx = sdata & AMASK;
+						if(cs2_idx == 0x1f){  //!!! debug
+							sdata++;
+						}
 						break;
 
 					case WR_DMEM:
-						CS2_dmem[cs2_idx] = (sdata & BIT_MASK);
-						if(!(CS2_dmem[cs2_idx] & CS2_bmem[cs2_idx]) || blinker){
-							CS2_trig[cs2_idx] = 0x0f;
+						pd = (sdata & BIT_MASK);							// calculate the proposed result
+						i = CS2_dmem[cs2_idx];								// hold old value in temp
+						if(pd != i){										// only process if there was a change
+							CS2_dmem[cs2_idx] = pd;
+							// if not blinking or blinker is on, set trigger on changed bits
+							if(!(pd & CS2_bmem[cs2_idx]) || blinker){
+								pd ^= i;									// calculate changed bits
+								CS2_trig[cs2_idx] |= pd;					// set trigger
+							}
 						}
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
 						break;
 
 					case OR_DMEM:
-						CS2_dmem[cs2_idx] |= (sdata & BIT_MASK);
-						if(!(CS2_dmem[cs2_idx] & CS2_bmem[cs2_idx]) || blinker){
-							CS2_trig[cs2_idx] = 0x0f;
+						pd = CS2_dmem[cs2_idx] | (sdata & BIT_MASK);		// calculate the proposed result
+						i = CS2_dmem[cs2_idx];								// hold old value in temp
+						if(pd != i){										// only process if there was a change
+							CS2_dmem[cs2_idx] = pd;
+							// if not blinking or blinker is on, set trigger on changed bits
+							if(!(pd & CS2_bmem[cs2_idx]) || blinker){
+								pd ^= i;									// calculate changed bits
+								CS2_trig[cs2_idx] |= pd;					// set trigger
+							}
 						}
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
 						break;
 
 					case AND_DMEM:
-						CS2_dmem[cs2_idx] &= (sdata & BIT_MASK);
-						if(!(CS2_dmem[cs2_idx] & CS2_bmem[cs2_idx]) || blinker){
-							CS2_trig[cs2_idx] = 0x0f;
+						pd = CS2_dmem[cs2_idx] & (sdata & BIT_MASK);		// calculate the proposed result
+						i = CS2_dmem[cs2_idx];								// hold old value in temp
+						if(pd != i){										// only process if there was a change
+							CS2_dmem[cs2_idx] = pd;
+							// if not blinking or blinker is on, set trigger on changed bits
+							if(!(pd & CS2_bmem[cs2_idx]) || blinker){
+								pd ^= i;									// calculate changed bits
+								CS2_trig[cs2_idx] |= pd;					// set trigger
+							}
 						}
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
 						break;
 						////////////
 
 					case WR_BMEM:
+						pd = CS2_bmem[cs2_idx] ^ (sdata & BIT_MASK);		// calculate changed bits
 						CS2_bmem[cs2_idx] = (sdata & BIT_MASK);
+						pd &= ~(sdata & BIT_MASK);							// calculate cleared bits
+						CS2_trig[cs2_idx] |= pd;							// set trigger
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
 						break;
 
 					case OR_BMEM:
+						pd = CS2_bmem[cs2_idx] | (sdata & BIT_MASK);		// calculate changed bits
+						pd ^= CS2_bmem[cs2_idx];
 						CS2_bmem[cs2_idx] |= (sdata & BIT_MASK);
+						pd &= ~(sdata & BIT_MASK);							// calculate cleared bits
+						CS2_trig[cs2_idx] |= pd;							// set trigger
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
 						break;
 
 					case AND_BMEM:
+						pd = CS2_bmem[cs2_idx] & (sdata & BIT_MASK);		// calculate changed bits
+						pd ^= CS2_bmem[cs2_idx];
 						CS2_bmem[cs2_idx] &= (sdata & BIT_MASK);
+						pd &= ~(sdata & BIT_MASK);							// calculate cleared bits
+						CS2_trig[cs2_idx] |= pd;							// set trigger
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
 						break;
 					}
@@ -4898,7 +4961,7 @@ void disp_fn(U8 csnum, U8 son, U8 maddr, U8 saddr){
 }
 
 //-----------------------------------------------------------------------------
-// trig_fill() place test date into trig array
+// trig_fill() place test data into trig array
 //-----------------------------------------------------------------------------
 void trig_fill(U8 idx, U8 data, U8 chsel){
 
