@@ -1,7 +1,7 @@
 # IC900_DUClone
 Display clone to replace the LCD ICs/Glass of the original ICOM IC-900 controller
 
-Current state of SW: Symbol map created.  Mechanization of the internal structure of the uPD7225 in SW is progressing (60% complete).
+Current state of SW: Initial IC-900 DVT compete.  Full DVT and IC-900 RDU Clone DVT has yet to complete.
 
 Current state of HW: Initial Concept:
 
