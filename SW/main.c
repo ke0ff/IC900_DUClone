@@ -22,10 +22,17 @@
  *
  *  The LCD used here is a 240x128, parallel bus, monochrome display offered by NewHaven, P/N NHD-240128WG-ATMI-VZ#
  *
- *
- *
  *    Project scope rev History:
  *    In-process code-n-test.
+ *    12-16-23:		Lots of debug and hair-pulling.  Finally stumbled on correct handling of the dmem/bmem and trigger
+ *						system.  Since the IC-900 constantly sends data, the SW must focus on detailed bit changes in
+ *    					dmem and bmem to calculate the correct trigger process so that the constant updates do not
+ *						interfere with the blink process.  This now seems to be working on the original IC-900 controller.
+ *						Need to try it on the RDU clone next.
+ *					Added overflow and ssi timeout error flags.  Overflow flag persists, TO flag will clear if comms
+ *						are restored.
+ *					Added comments and cleaned up debug hacks.
+ *
  *    12-08-23:		Added blink code to process_LCD().  Includes refresh of original segments when blink mem is written
  *    					(allows system to recover the original symbol when the blink segment is "unblinked").
  *    					Trapped BLINKOFF SPI cmd to re-trigger any blinking segments.
@@ -62,16 +69,17 @@
 //
 //	Uses GPIO to drive LCD 8-bit bus I/O
 //
-//	SSI0 inputs LCD SPI data (RX only)
+//	GPIO edge ISR inputs LCD bbSSI data (RX only)
 //
 //	GPIO is used for the LCD parallel interface.  PB = bi-directional 8-bit port, PE = interface lines for 8b port,
 //		and 2 GPIOs on port D to drive mode signals to the LCD.
 //
 //  Interrupt Resource Map:
 //	*	Timer3A			--			app timer
-//	*	SSI0			PA2/4:		LCD interface ICs (uPD7225) SPI
+//	*	-deprecated- SSI0			PA2/4:		LCD interface ICs (uPD7225) SPI
+//	*	GPIOA			PA2:		LCD interface ICs (uPD7225) bit-bang SSI (allows consistent capture of CS and CMD/DATA meta data)
 //	*	UART0 			PA[1:0]:	ISR(RX/TX) debug serial port
-//	*	M1PWM (4)		PF1:		LED PWM to drive LCD backlight
+//	*	-notused- M1PWM (4)		PF1:		LED PWM to drive LCD backlight
 //		ADC0			PD2:		Ambient light sensor
 //
 //
@@ -115,14 +123,6 @@
 #define DAC_CLR 22
 
 
-// quick beep macro
-/*#define	q_beep   beep_counter = beep_count; \
-				 TIMER0_CTL_R |= (TIMER_CTL_TAEN);
-
-// dial beep macro
-#define	d_beep   beep_counter = DIAL_BEEP_COUNT; \
-				 TIMER0_CTL_R |= (TIMER_CTL_TAEN);*/
-
 //-----------------------------------------------------------------------------
 // Local Variables
 //-----------------------------------------------------------------------------
@@ -150,7 +150,6 @@ S8		xoffsent;						// xoff sent
 char	got_cmd;						// first valid cmd flag (freezes baud rate)
 U32		abaud;							// 0 = 115.2kb (the default)
 U8		iplt2;							// timer2 ipl flag
-//U8		btredir;						// bluetooth cmd re-direct flag
 U16		waittimer;						// gp wait timer
 U16		waittimer2;						// gp wait timer
 U16		ipl_timer;						// ipl timeout timer
@@ -190,7 +189,6 @@ U8		hib_access;						// HIB intrpt lock-out flag
 void Timer_Init(void);
 void Timer_SUBR(void);
 char *gets_tab(char *buf, char *save_buf[3], int n);
-//char kp_asc(U16 keycode);
 
 //*****************************************************************************
 // main()
@@ -245,10 +243,7 @@ int main(void){
     	rebuf1[0] = '\0';
     	rebuf2[0] = '\0';
     	rebuf3[0] = '\0';
-//    	bcmd_resp_init();								// init bcmd response buffer
     	wait(10);										// a bit more delay..
-//    	GPIO_PORTB_DATA_R &= ~PTT7K;					// set PTT7K in-active
-//    	GPIO_PORTD_DATA_R &= ~PTTb;						// set PTTb in-active
     	while(gotchrQ()) getchrQ();						// clear serial input in case there was some POR garbage
     	gets_tab(buf, rebufN, GETS_INIT);				// initialize gets_tab()
         set_led(0xff, 0x00);							// init LED levels
@@ -258,9 +253,6 @@ int main(void){
         set_led(6, 1);
         set_pwm(6, 10);
     	process_IO(PROC_INIT);							// init process_io
-//    	btredir = 0;
-//    	sprintf(buf,"NVsrt %0x, NVend %0x", NVRAM_BASE, MEM_END);
-//    	putsQ(buf);
     	// GPIO init
     	//...
     	// main loop
@@ -300,12 +292,6 @@ int main(void){
     			fault_found = TRUE;
     		}
         }while(swcmd != SW_ESC);
-// this is done in process IPL        swcmd = 0;												// re-arm while-loop and restart...
-/*    	NVIC_DIS0_R = 0xFFFFFFFF;								// disable ISRs
-    	NVIC_DIS1_R = 0xFFFFFFFF;
-    	NVIC_DIS2_R = 0xFFFFFFFF;
-    	NVIC_DIS3_R = 0xFFFFFFFF;
-    	NVIC_DIS4_R = 0xFFFFFFFF;*/
     }while(1);
 }
 
@@ -360,12 +346,10 @@ volatile	char	q = 0;
 	U8		j;
 	U8		se = 0;						// status enable reflection.  If enabled, suppress echo
 	static	U8   rebuf_num;
-//	static	U8	 last_chr;
 
 //	if((rebuf_num >= MAX_REBUF) || (n == GETS_INIT)){ // n == 0xff is static initializer signal
 	if(n == GETS_INIT){ // n == 0xff is static initializer signal
 		rebuf_num = 0;									// init recall buffer pointer
-//		last_chr = 0xff;								// init to 0xff (not a valid baud select identifier chr)
 		return buf;										// skip rest of Fn
 	}
     cp = buf;
@@ -375,73 +359,9 @@ volatile	char	q = 0;
     		// run the process loops and capture UART chars
     		process_IO(0);
     		c = getchQ();
-//    		if(c){
-//    			getss(btbuf);
-//    			c = *btbuf;
-//    			if(*btbuf){
-//        			putssQ("{");
-//        			putssQ(btbuf);
-//        			putsQ("}");
-//    			}
-//    		}
     	}while(!c && !q);
     	if(!q){
- /*   		if(!got_cmd){
-                switch(c){
-        			case 0xE0:									// look for 19.2kb autoselect
-        				if(last_chr == 0xE0){
-        					abaud = 19200L;
-        					c = '\r';
-        				}
-        				break;
-
-        			case 0x00:									// look for 38.4kb or 9600b autoselect
-        				if(last_chr == 0x1C){
-        					abaud = 38400L;
-        					c = '\r';
-        				}else{
-        					if(last_chr == 0x00){
-        						abaud = 9600L;
-        						c = '\r';
-        					}
-        				}
-        				break;
-
-        			case 0x80:									// look for 57.6kb autoselect
-        				if(last_chr == 0xE6){
-        					abaud = 57600L;
-        					c = '\r';
-        				}
-        				break;
-                }
-    		}*/
             switch(c){
-/*    			case 0xE0:									// look for 19.2kb autoselect
-    				if(last_chr == 0xE0){
-    					abaud = 19200L;
-    					c = '\r';
-    				}
-    				break;
-
-    			case 0x00:									// look for 38.4kb or 9600b autoselect
-    				if(last_chr == 0x1C){
-    					abaud = 38400L;
-    					c = '\r';
-    				}else{
-    					if(last_chr == 0x00){
-    						abaud = 9600L;
-    						c = '\r';
-    					}
-    				}
-    				break;
-
-    			case 0x80:									// look for 57.6kb autoselect
-    				if(last_chr == 0xE6){
-    					abaud = 57600L;
-    					c = '\r';
-    				}
-    				break;*/
-
                 case '\t':
     				if(i != 0){								// if tab, cycle through saved cmd buffers
     					do{
@@ -513,20 +433,12 @@ volatile	char	q = 0;
                     *cp++ = c;								// put chr in buf
                     if(!se){
                         putdchQ(c);							// no cntl chrs here
-//						kickuart0();
                     }
                     break;
             }
     	}
-//		if(c != BT_LN) last_chr = c;					// set last chr
     } while((c != '\r') && (c != '\n') && (i < CLI_BUFLEN) && (c != BT_LN));		// loop until c/r or l/f or buffer full
-    if(c == BT_LN){
-//    	if(btredir){
-//    		buf = get_btptr();
-//    	}else{
-//        		process_CCMD(0);
-//    	}
-    }else{
+    if(c != BT_LN){
     	if(i >= CLI_BUFLEN){
     		putsQ("#! buffer overflow !$");
     		*buf = '\0';								// abort line
@@ -553,7 +465,7 @@ void process_IO(U8 flag){
 	process_CMD(flag);									// process CMD_FN state (primarily, the MFmic key-entry state machine)
 	process_LCD(flag);									// lcd updates and blink machine
 	process_SPI(flag);									// spi input processing
-//	process_ERR(flag);									// error reporting
+	process_ERR(flag);									// error reporting
 	return;
 }
 

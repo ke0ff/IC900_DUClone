@@ -16,6 +16,8 @@
  *
  *******************************************************************/
 
+#define SWAPEVEN	// undefine if production build.  This corrects the even/odd swap mistake in the prototype bus wiring
+
 //------------------------------------------------------------------------------
 // extern defines
 //------------------------------------------------------------------------------
@@ -145,7 +147,11 @@ extern	U8	optrow[];		// opt row
 
 // LCD parallel port defines
 // macro to swap even/odd bits -- temp patch until hardware can get fixed
+#ifdef SWAPEVEN
 #define	swapeo(data) (((data << 1) & 0xaa) | ((data >> 1) & 0x55))
+#else
+#define	swapeo(data) (data)
+#endif
 
 #define	LCDCMD		TADDR	//0x01
 #define	LCDDATA		0x00
@@ -337,6 +343,7 @@ extern	U8	optrow[];		// opt row
 //------------------------------------------------------------------------------
 void process_LCD(U8 iplfl);
 void process_SPI(U8 iplfl);
+void process_ERR(U8 iplfl);
 void set_csn(U8 m, U8 n);
 
 
@@ -512,13 +519,7 @@ void sg_bcd_s5d(U8 son);
 void sg_bcd_s5e(U8 son);
 void sg_bcd_s5f(U8 son);
 void sg_bcd_s5g(U8 son);
-//void sg_bcd_s6a(U8 son);
 void sg_bcd_s6bc(U8 son);
-/*void sg_bcd_s6c(U8 son);
-void sg_bcd_s6d(U8 son);
-void sg_bcd_s6e(U8 son);
-void sg_bcd_s6f(U8 son);
-void sg_bcd_s6g(U8 son);*/
 
 void sg_bcd_mem_m7a(U8 son);
 void sg_bcd_mem_m7b(U8 son);

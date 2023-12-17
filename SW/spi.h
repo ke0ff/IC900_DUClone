@@ -22,9 +22,11 @@
 #define	BBSPI			// enable bit-bang SPI
 
 // spi defines
-#define	SPI_LEN		256
+#define	SPI_LEN		256					// !! THIS MUST BE 256 !! This allows (U8) pointer wrap-around to be
+										// automatic with no additional code.  Thus, pointers must be U8 types!
 #define	SPI_OVFLW	0x80
 #define	SPI_CSSEG	0x40
+#define	SSITO_TIME	(SPITIMER_TICS)		// 1 sec timeout
 
 // Processor I/O assignments
 // ...see init.h
@@ -57,6 +59,7 @@ void dbg_spirx(U8* sptr, U8 len, U8* buf);
 
 void init_ssi0(void);
 U8 get_csseg(void);
+U8 get_spiovf(void);
 U8 got_ssi0(void);
 U16 get_ssi0(void);
 void ssi0_isr(void);

@@ -22,10 +22,49 @@
 //#define	USE_QSPI 1
 
 //////////////////////////////////////////////////////////////////////////////////////
-//#define	USE_QSPI 1																	//
-//#define	LA_ENABLE					// define if logic analyzer is enabled (debug)	//
+//#define	USE_QSPI 1																//
+//#define	LA_ENABLE				// define if logic analyzer is enabled (debug)	//
 //////////////////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////////////////
+// Pin List
+//
+//	PB[7:0]:	bidirectional 8b port.  Uses SN74LXC8T245-Q1 (or equiv) bus voltate translator to drive 5V LCD port
+//	PA[1:0]:	debug UART
+//	PA2:		SCLK		Ersatz (bit-bang) SSI0
+//	PA3:		CSS = (/CS1 * /CS2) (74AHC1G08 w/ Vdd=3.3V and inputs dropped to 3.3V with R-divider)
+//	PA4:		MOSI
+//	PA5:		/CS2		meta data for bbSSI, IC-900 LCD chip2 enable
+//	PA6:		/CS1		meta data for bbSSI, IC-900 LCD chip1 enable
+//	PA7:		CMDATA		meta data for bbSSI, IC-900 cmd/data enable
+//	PD0:		/FS			drives LCD font size input
+//	PD1:		/RVS		drives LCD reverse input
+//	PE0:		/RSTIN		IC900 LCD reset input
+//	PE1:		/TRD		LCD bus control sig, /RD (pin 2 of SN74LXC8T245-Q1)
+//	PE2:		/TWR		LCD bus control sig, /WR
+//	PE3:		/TADDR		LCD bus control sig, CMD addr bit
+//	PE4:		/TCE		LCD bus control sig, /CE (pin 22 of SN74LXC8T245-Q1)
+//	PE5:		LRST		LCD reset sig
+//	PF4:		SCLKE		-deprecated- alt SCLK for edge capture
+//
+//	Inputs other than those that use the SN74LXC8T245-Q1 are passed through a resistive divider to convert 5V to 3.3V.
+//	Rseries = 523 ohms, Rshunt = 1K ohm.  Outputs use 74AHCT gates to convert 3.3V to 5V.  /FS, /RVS, & LRST use NFETs
+//	with pullups to 5V.
+//
+// LCD Pin List
+//		/--- 500K ---\
+//	CaseGND	 1	2   GND
+//		+5V	 3	4   Vbias (arm of 10K pot.  PotH goes to pin 9, PotL goes to GND)
+//		/WR	 5	6   /RD
+//		/CE	 7	8   TADDR
+//		-Vo	 9	10  /reset
+//		D0	11	12  D1			D[7:0] connects to PB[7:0] via a voltage xlator IC
+//		D2	13	14  D3			!!!- The prototype has the even and odd bits transposed, so there is a #if in "lcd_db.h"
+//		D4	15	16  D5			!!!  to fix this (SWAPEVEN is the #if define)
+//		D6	17	18  D7
+//		FS	11	12  RVS
+//
+//////////////////////////////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
 // Global Constants
 //-----------------------------------------------------------------------------
@@ -143,8 +182,9 @@
 #define TIMER3_ILR 0xffff			// timer 3 interval (24 bit)
 #define TIMER3_PS 32
 
-#define TIMER1B_PS 		1			// prescale value for timer1B
-#define	SPITIMER_FREQ	10000L		// timer freq for SPI TO timer
+#define TIMER1B_PS 		32			// prescale value for timer1B
+#define	SPITIMER_FREQ	100L		// timer freq for SPI TO timer
+#define	SPITIMER_TICS	100L		// tics per 1 sec
 
 #define	TPULSE	(100L)				// in usec
 #define TMIN	(((SYSCLK / 100) * TPULSE)/10000L)	// minimum pulse width

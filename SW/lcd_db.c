@@ -43,28 +43,28 @@ U8	optrow[OPTROW_LEN];		// opt row
 
 U8	change_flag;			// bitmap of array changed flags
 
-// uPD7225 registers
+// uPD7225 status registers
 U8	CS1_reg;				// CS1 status register
 U8	CS2_reg;				// CS2 status register
 
 // uPD7225 memory arrays
-// segment change memory array
+// CS1 segment change memory array
 U8	CS1_trig[LCD_MEMLEN];	// trigger
-// segment on/off memory array
+// CS1 segment on/off memory array
 U8	CS1_dmem[LCD_MEMLEN];	// display mem
-// blink on/off memory array
+// CS1 blink on/off memory array
 U8	CS1_bmem[LCD_MEMLEN];	// blink mem
 
-// segment change memory array
+// CS2 segment change memory array
 U8	CS2_trig[LCD_MEMLEN];	// trigger
-// segment on/off memory array
+// CS2 segment on/off memory array
 U8	CS2_dmem[LCD_MEMLEN];	// display mem
-// blink on/off memory array
+// CS2 blink on/off memory array
 U8	CS2_bmem[LCD_MEMLEN];	// blink mem
 
-U8	cs1_idx;
+U8	cs1_idx;				// dmem/bmem indecies
 U8	cs2_idx;
-U8	blinker;
+U8	blinker;				// file-local blink enable (low-bit only)
 
 // segment function LUTs.  The major index is the segment ram array index, the minor index is the
 //		memory bit (0x4, 0x2, or 0x1 masks).  The function parameter is segment "ON" = 1 or "OFF" = 0
@@ -139,8 +139,6 @@ void (*cs2_fn[32][3])(U8) = {
 		{ sg_prg , sg_mhz , sg_bnd }							// 0x1F
 };
 
-//	(*fun_ptr_arr[ch])(a, b);
-
 U8 err1[7][5] = {
 		{ 0x39 , 0xE7 , 0x39 , 0x17 , 0xA0 },
 		{ 0x45 , 0x12 , 0x45 , 0x14 , 0x20 },
@@ -190,7 +188,7 @@ U8	seg7[16][3] = {		// 7-seg encoder LUT
 
 
 //-----------------------------------------------------------------------------
-// process_LCD() handles lcd updates
+// process_LCD() handles lcd updates and blink operations
 //-----------------------------------------------------------------------------
 void process_LCD(U8 iplfl){
 			U8	i;
@@ -309,36 +307,9 @@ void process_LCD(U8 iplfl){
 	return;
 }
 
-/*
-// CSn_reg defines:
-#define	CS_DECODE7	0x01			// 7-seg decoder enabled
-#define	CS_FBLINK	0x02			// fast blink
-#define	CS_SBLINK	0x04			// slow blink
-#define	CS_DISPON	0x08			// disp enable
-
-#define	MODE_SET	0x49			// /3 time-div, 1/3 bias, 2E-8 fdiv
-#define	BLINK_SLOW	0x1A			// low-bit is flash-rate
-#define	BLINK_FAST	0x1B			//  "   " ...
-#define	BLINK_OFF	0x18			// disable blink
-#define	DISP_ON		0x11			// enable disp
-#define	DISP_OFF	0x10			// blank disp
-#define	WITH_DECODE	0x15			// 7-seg decode
-#define	WITHOUT_DECODE	0x14		// no decode
-#define	LOAD_PTR	0xE0			// OR with 0x1f (masked address)
-#define	LOAD_PTR2	0xF0			// switch alternate
-#define	AMASK		0x1F			// address mask
-#define	DMASK		0x0F			// data mask
-#define	WR_DMEM		0xD0			// write with (0x0f masked data)
-#define	OR_DMEM		0xB0			// OR with (0x0f masked data)
-#define	AND_DMEM	0x90			// AND with (0x0f masked data)
-#define	CLR_DMEM	0x20			// clear disp. mem
-#define	WR_BMEM		0xC0			// write with (0x0f masked data)
-#define	OR_BMEM		0xA0			// OR with (0x0f masked data)
-#define	AND_BMEM	0x80			// AND with (0x0f masked data)
-#define	CLR_BMEM	0x00			// clear blink. mem*/
-
 //-----------------------------------------------------------------------------
-// process_SPI() fetches SPI data and processes cmds/data
+// process_SPI() fetches SPI data from buffer and processes into the
+//	dmem/bmem/trig arrays.
 //-----------------------------------------------------------------------------
 
 void process_SPI(U8 iplfl){
@@ -347,16 +318,13 @@ void process_SPI(U8 iplfl){
 	U8	csf1;
 	U8	csf2;
 	U8	swdat;
-	static U8	stlast;
 	U8	st;
 	U8	datcmd;
 	U8	i=0;
 	U8	pd;
-//	U8	m;
 
 	if(iplfl){
 		// IPL init
-		stlast = 0xff;
 	}
 	while(got_ssi0()){
 		ii = get_ssi0();
@@ -365,35 +333,24 @@ void process_SPI(U8 iplfl){
 		csf1 = st & CS1;
 		csf2 = st & CS2;
 		datcmd = st & DATA_CMD;
-
-		if(csf1 && csf2){  //!!! debug
-			GPIO_PORTD_DATA_R ^= sparePD7;
-		}
-
-		// if data & decode7, set up for write
+		// Process data (decode or straight up) /////////////////////////////////////////////////////////////////
 		if(datcmd){
 			// Process CS1 data
 			if(csf1){
 				if(CS1_reg & CS_DECODE7){	// 7-seg decode
-//					m = CS1_dmem[cs1_idx];
 					CS1_dmem[cs1_idx] = seg7[sdata & DMASK][0];
 					CS1_trig[cs1_idx] = 0x0f;
-//					m = CS1_dmem[cs1_idx+1];
 					CS1_dmem[cs1_idx+1] = seg7[sdata & DMASK][1];
 					CS1_trig[cs1_idx+1] = 0x0f;
-//					m = CS1_dmem[cs1_idx+2];
 					CS1_dmem[cs1_idx+2] = seg7[sdata & DMASK][2];
 					CS1_trig[cs1_idx+2] = 0x0f;
 					cs1_idx += 3;
 					if(cs1_idx > 0x1f) cs1_idx = 0;
 				}else{						// no decode
-//					m = CS1_dmem[cs1_idx];
 					CS1_dmem[cs1_idx] = ((sdata & DMASK0) >> DSHFT0);
 					CS1_trig[cs1_idx] = 0x0f;
-//					m = CS1_dmem[cs1_idx+1];
 					CS1_dmem[cs1_idx+1] = ((sdata & DMASK1) >> DSHFT1);
 					CS1_trig[cs1_idx+1] = 0x0f;
-//EOR changes doesn't work!!!					m = CS1_dmem[cs1_idx+2];
 					CS1_dmem[cs1_idx+2] = ((sdata & DMASK2) >> DSHFT2);
 					CS1_trig[cs1_idx+2] = 0x0f;
 					cs1_idx += 3;
@@ -403,27 +360,19 @@ void process_SPI(U8 iplfl){
 			// Process CS2 data
 			if(csf2){
 				if(CS2_reg & CS_DECODE7){	// 7-seg decode
-//					m = CS2_dmem[cs2_idx];
 					CS2_dmem[cs2_idx] = seg7[sdata & DMASK][0];
-					CS2_trig[cs2_idx] = 0x0f; //m ^ CS2_dmem[cs2_idx];
-
-//					m = CS2_dmem[cs2_idx+1];
+					CS2_trig[cs2_idx] = 0x0f;
 					CS2_dmem[cs2_idx+1] = seg7[sdata & DMASK][1];
 					CS2_trig[cs2_idx+1] = 0x0f;
-
-//					m = CS2_dmem[cs2_idx+2];
 					CS2_dmem[cs2_idx+2] = seg7[sdata & DMASK][2];
 					CS2_trig[cs2_idx+2] = 0x0f;
 					cs2_idx += 3;
 					if(cs2_idx > 0x1f) cs2_idx = 0;
 				}else{						// no decode
-//					m = CS2_dmem[cs2_idx];
 					CS2_dmem[cs2_idx] = ((sdata & DMASK0) >> DSHFT0);
 					CS2_trig[cs2_idx] = 0x0f;
-//					m = CS2_dmem[cs2_idx+1];
 					CS2_dmem[cs2_idx+1] = ((sdata & DMASK1) >> DSHFT1);
 					CS2_trig[cs2_idx+1] = 0x0f;
-//					m = CS2_dmem[cs2_idx+2];
 					CS2_dmem[cs2_idx+2] = ((sdata & DMASK2) >> DSHFT2);
 					CS2_trig[cs2_idx+2] = 0x0f;
 					cs2_idx += 3;
@@ -431,18 +380,17 @@ void process_SPI(U8 iplfl){
 				}
 			}
 		}else{
-			// Process CS1 cmds
+			// Process CS1 cmds /////////////////////////////////////////////////////////////////////////////////////
 			if(csf1){
-				if(sdata & 0xC0){						// is a parametric command?
+				if(sdata & 0xC0){						// is a parametric command (high bits set)?
 					swdat = sdata & 0xf0;				// mask off data to get command
 					switch(swdat){
 					default:
-						swdat++;
 						break;
 
 					case LOAD_PTR:
 					case LOAD_PTR2:
-						cs1_idx = sdata & AMASK;
+						cs1_idx = sdata & AMASK;							// set dmem/bmem pointer
 						break;
 
 					case WR_DMEM:
@@ -450,10 +398,11 @@ void process_SPI(U8 iplfl){
 						i = CS1_dmem[cs1_idx];								// hold old value in temp
 						if(pd != i){										// only process if there was a change
 							CS1_dmem[cs1_idx] = pd;
-							// if not blinking or blinker is on, set trigger on changed bits
-							if(!(pd & CS1_bmem[cs1_idx]) || blinker){
-								pd ^= i;									// calculate changed bits
-								CS1_trig[cs1_idx] |= pd;					// set trigger
+							pd ^= i;										// calculate changed bits
+							if(blinker){									// trig: blink "on" cycle, set any changed
+								CS1_trig[cs1_idx] |= pd;
+							}else{											// trig: else set only changes with no blink
+								CS1_trig[cs1_idx] |= pd & ~CS1_bmem[cs1_idx];
 							}
 						}
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
@@ -464,10 +413,11 @@ void process_SPI(U8 iplfl){
 						i = CS1_dmem[cs1_idx];								// hold old value in temp
 						if(pd != i){										// only process if there was a change
 							CS1_dmem[cs1_idx] = pd;
-							// if not blinking or blinker is on, set trigger on changed bits
-							if(!(pd & CS1_bmem[cs1_idx]) || blinker){
-								pd ^= i;									// calculate changed bits
-								CS1_trig[cs1_idx] |= pd;					// set trigger
+							pd ^= i;										// calculate changed bits
+							if(blinker){									// trig: blink "on" cycle, set any changed
+								CS1_trig[cs1_idx] |= pd;
+							}else{											// trig: else set only changes with no blink
+								CS1_trig[cs1_idx] |= pd & ~CS1_bmem[cs1_idx];
 							}
 						}
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
@@ -478,15 +428,15 @@ void process_SPI(U8 iplfl){
 						i = CS1_dmem[cs1_idx];								// hold old value in temp
 						if(pd != i){										// only process if there was a change
 							CS1_dmem[cs1_idx] = pd;
-							// if not blinking or blinker is on, set trigger on changed bits
-							if(!(pd & CS1_bmem[cs1_idx]) || blinker){
-								pd ^= i;									// calculate changed bits
-								CS1_trig[cs1_idx] |= pd;					// set trigger
+							pd ^= i;										// calculate changed bits
+							if(blinker){									// trig: blink "on" cycle, set any changed
+								CS1_trig[cs1_idx] |= pd;
+							}else{											// trig: else set only changes with no blink
+								CS1_trig[cs1_idx] |= pd & ~CS1_bmem[cs1_idx];
 							}
 						}
 						if(++cs1_idx > 0x1f) cs1_idx = 0;
 						break;
-						////////////
 
 					case WR_BMEM:
 						pd = CS1_bmem[cs1_idx] ^ (sdata & BIT_MASK);		// calculate changed bits
@@ -517,14 +467,14 @@ void process_SPI(U8 iplfl){
 				}else{
 					switch(sdata){		// not a parametric, use the whole byte to dispatch
 					case WITH_DECODE:
-						CS1_reg |= CS_DECODE7;
+						CS1_reg |= CS_DECODE7;								// enable 7-seg decode
 						break;
 
 					case WITHOUT_DECODE:
-						CS1_reg &= ~CS_DECODE7;
+						CS1_reg &= ~CS_DECODE7;								// disable 7-seg decode
 						break;
 
-					case CLR_DMEM:
+					case CLR_DMEM:											// clear entire dmem
 						for(i=0; i<0x1f; i++){
 							CS1_dmem[i] = 0x00;
 							CS1_trig[i] = 0x0f;
@@ -532,29 +482,29 @@ void process_SPI(U8 iplfl){
 						cs1_idx = 0;
 						break;
 
-					case CLR_BMEM:
+					case CLR_BMEM:											// clear entire bmem
 						for(i=0; i<0x1f; i++){
 							CS1_bmem[i] = 0x00;
 						}
 						cs1_idx = 0;
 						break;
 
-					case BLINK_SLOW:
+					case BLINK_SLOW:										// set slow blink (we only blink at one rate here)
 						CS1_reg = (CS1_reg & ~CS_NEBLINK) | CS_SBLINK;
 						break;
 
-					case BLINK_FAST:
+					case BLINK_FAST:										// set fast blink (we only blink at one rate here)
 						CS1_reg = (CS1_reg & ~CS_NEBLINK) | CS_FBLINK;
 						break;
 
-					case BLINK_OFF:
+					case BLINK_OFF:											// disable blink
 						CS1_reg = (CS1_reg & ~CS_NEBLINK);
 						for(i=0; i<LCD_MEMLEN; i++){
 							CS1_trig[i] = CS1_bmem[i] | MODE_OR;
 						}
 						break;
 
-					case MODE_SET:
+					case MODE_SET:											// future support cmds
 					case DISP_ON:
 					case DISP_OFF:
 					default:
@@ -562,9 +512,9 @@ void process_SPI(U8 iplfl){
 					}
 				}
 			}
-			// Process CS2 cmds
+			// Process CS2 cmds /////////////////////////////////////////////////////////////////////////////////////
 			if(csf2){
-				if(sdata & 0xC0){						// is a parametric command?
+				if(sdata & 0xC0){						// is a parametric command (high bits set)?
 					swdat = sdata & 0xf0;				// mask off data to get command
 					switch(swdat){
 					default:
@@ -573,10 +523,7 @@ void process_SPI(U8 iplfl){
 
 					case LOAD_PTR:
 					case LOAD_PTR2:
-						cs2_idx = sdata & AMASK;
-						if(cs2_idx == 0x1f){  //!!! debug
-							sdata++;
-						}
+						cs2_idx = sdata & AMASK;							// set dmem/bmem index
 						break;
 
 					case WR_DMEM:
@@ -584,10 +531,11 @@ void process_SPI(U8 iplfl){
 						i = CS2_dmem[cs2_idx];								// hold old value in temp
 						if(pd != i){										// only process if there was a change
 							CS2_dmem[cs2_idx] = pd;
-							// if not blinking or blinker is on, set trigger on changed bits
-							if(!(pd & CS2_bmem[cs2_idx]) || blinker){
-								pd ^= i;									// calculate changed bits
-								CS2_trig[cs2_idx] |= pd;					// set trigger
+							pd ^= i;										// calculate changed bits
+							if(blinker){									// trig: blink "on" cycle, set any changed
+								CS2_trig[cs2_idx] |= pd;
+							}else{											// trig: else set only changes with no blink
+								CS2_trig[cs2_idx] |= pd & ~CS2_bmem[cs2_idx];
 							}
 						}
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
@@ -598,10 +546,11 @@ void process_SPI(U8 iplfl){
 						i = CS2_dmem[cs2_idx];								// hold old value in temp
 						if(pd != i){										// only process if there was a change
 							CS2_dmem[cs2_idx] = pd;
-							// if not blinking or blinker is on, set trigger on changed bits
-							if(!(pd & CS2_bmem[cs2_idx]) || blinker){
-								pd ^= i;									// calculate changed bits
-								CS2_trig[cs2_idx] |= pd;					// set trigger
+							pd ^= i;										// calculate changed bits
+							if(blinker){									// trig: blink "on" cycle, set any changed
+								CS2_trig[cs2_idx] |= pd;
+							}else{											// trig: else set only changes with no blink
+								CS2_trig[cs2_idx] |= pd & ~CS2_bmem[cs2_idx];
 							}
 						}
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
@@ -612,10 +561,11 @@ void process_SPI(U8 iplfl){
 						i = CS2_dmem[cs2_idx];								// hold old value in temp
 						if(pd != i){										// only process if there was a change
 							CS2_dmem[cs2_idx] = pd;
-							// if not blinking or blinker is on, set trigger on changed bits
-							if(!(pd & CS2_bmem[cs2_idx]) || blinker){
-								pd ^= i;									// calculate changed bits
-								CS2_trig[cs2_idx] |= pd;					// set trigger
+							pd ^= i;										// calculate changed bits
+							if(blinker){									// trig: blink "on" cycle, set any changed
+								CS2_trig[cs2_idx] |= pd;
+							}else{											// trig: else set only changes with no blink
+								CS2_trig[cs2_idx] |= pd & ~CS2_bmem[cs2_idx];
 							}
 						}
 						if(++cs2_idx > 0x1f) cs2_idx = 0;
@@ -651,14 +601,14 @@ void process_SPI(U8 iplfl){
 				}else{
 					switch(sdata){		// not a parametric, use the whole byte to dispatch
 					case WITH_DECODE:
-						CS2_reg |= CS_DECODE7;
+						CS2_reg |= CS_DECODE7;								// enable 7-seg decode
 						break;
 
 					case WITHOUT_DECODE:
-						CS2_reg &= ~CS_DECODE7;
+						CS2_reg &= ~CS_DECODE7;								// disable 7-seg decode
 						break;
 
-					case CLR_DMEM:
+					case CLR_DMEM:											// clear entire dmem
 						for(i=0; i<0x1f; i++){
 							CS2_trig[i] = 0x0f;
 							CS2_dmem[i] = 0;
@@ -666,7 +616,7 @@ void process_SPI(U8 iplfl){
 						cs2_idx = 0;
 						break;
 
-					case CLR_BMEM:
+					case CLR_BMEM:											// clear entire bmem
 						for(i=0; i<0x1f; i++){
 							CS2_trig[i] = 0x0f;
 							CS2_bmem[i] = 0;
@@ -674,22 +624,22 @@ void process_SPI(U8 iplfl){
 						}
 						break;
 
-					case BLINK_SLOW:
+					case BLINK_SLOW:										// set slow blink (we only blink at one rate here)
 						CS2_reg = (CS2_reg & ~CS_NEBLINK) | CS_SBLINK;
 						break;
 
-					case BLINK_FAST:
+					case BLINK_FAST:										// set slow blink (we only blink at one rate here)
 						CS2_reg = (CS2_reg & ~CS_NEBLINK) | CS_FBLINK;
 						break;
 
-					case BLINK_OFF:
+					case BLINK_OFF:											// disable blink
 						CS2_reg = (CS2_reg & ~CS_NEBLINK);
 						for(i=0; i<LCD_MEMLEN; i++){
 							CS2_trig[i] = CS2_bmem[i] | MODE_OR;
 						}
 						break;
 
-					case MODE_SET:
+					case MODE_SET:											// future support cmds
 					case DISP_ON:
 					case DISP_OFF:
 					default:
@@ -698,13 +648,37 @@ void process_SPI(U8 iplfl){
 				}
 			}
 		}
-		if((stlast ^ st) & CS1){
-			trig_scan1(MODE_OR);
-		}
-		if((stlast ^ st) & CS2){
-			trig_scan2(MODE_OR);
-		}
-		stlast = st;
+		// do trigger scans (updates LCD with changes)
+		trig_scan1(MODE_OR);
+		trig_scan2(MODE_OR);
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// process_ERR() handles lcd error displays
+//-----------------------------------------------------------------------------
+void process_ERR(U8 iplfl){
+#define	OVF_ERR	0x80
+#define	STO_ERR	0x40
+
+	static U8	errstat;
+
+	if(iplfl){
+		// ipl init
+		errstat = 0;
+	}
+	if(get_spiovf() && !(errstat & OVF_ERR)){		// if buffer overflow, disp err
+		disp_err(1);
+		errstat |= OVF_ERR;
+	}
+	if(is_ssito() && !(errstat & STO_ERR)){			// if serial TO, disp err
+		disp_err(2);
+		errstat |= STO_ERR;
+	}
+	if(!is_ssito() && (errstat & STO_ERR)){			// clear serial TO
+		disp_err(3);
+		errstat &= ~STO_ERR;
 	}
 	return;
 }
@@ -802,9 +776,10 @@ void disp_err(U8 mnum){
 	U8	j;
 	U16 addr;
 
-	if((mnum > 2) || (mnum == 0)) return;
+	if((mnum > 3) || (mnum == 0)) return;
 	if(mnum == 1) addr = ERR_OFFS;							// msg1 pixel address
 	if(mnum == 2) addr = ERR2_OFFS;							// msg2 pixel address
+	if(mnum == 3) addr = ERR2_OFFS;							// msg2 pixel address
 	wrdb(0x98, LCDCMD, STA01);								// graphics ON, text OFF
 	for(j=0; j<7; j++){
 		wrdb((uint8_t)(addr&0xff), LCDDATA, STA01);			// pixel address
@@ -814,6 +789,7 @@ void disp_err(U8 mnum){
 		for(i=0;i<5;i++){    								// send msg
 			if(mnum == 1) wrdb(err1[j][i], LCDDATA, STA23);	// pixel address
 			if(mnum == 2) wrdb(err2[j][i], LCDDATA, STA23);	// pixel address
+			if(mnum == 3) wrdb(0, LCDDATA, STA23);			// pixel address
 		}
 		wrdb(0xB2, LCDCMD, STA01);							// auto write OFF
 		addr += DROW;

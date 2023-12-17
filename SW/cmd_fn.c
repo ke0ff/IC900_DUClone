@@ -1,5 +1,5 @@
 /********************************************************************
- ************ COPYRIGHT (c) 2022 by ke0ff, Taylor, TX   *************
+ ************ COPYRIGHT (c) 2023 by ke0ff, Taylor, TX   *************
  *
  *  File name: cmd_fn.c
  *
@@ -1408,7 +1408,6 @@ float temp_float(U16 k){
 
 void copbuf(void){
 	U8	i;
-//	U8	j;
 	U8	tb[] =	  { 0xe6, 0x14, 0x00, 0xe8, 0xb0, 0xfb, 0x14, 0x00, 0xfd, 0xb0,
 					0xe5, 0xc0, 0xfc, 0x81 };
 

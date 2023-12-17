@@ -1,18 +1,15 @@
 /********************************************************************
- ************ COPYRIGHT (c) 2022 by KE0FF, Taylor, TX   *************
+ ************ COPYRIGHT (c) 2023 by KE0FF, Taylor, TX   *************
  *
  *  File name: spi.c
  *
  *  Module:    Control
  *
  *  Summary:
- *  spi for RDU LCD controller IC
+ *  ssi driver for RDU LCD controller IC
  *
  *******************************************************************/
 
-//#include <stdint.h>
-//#include <string.h>
-//#include <stdio.h>
 #include <ctype.h>
 #include <math.h>
 #include "inc/tm4c123gh6pm.h"
@@ -28,8 +25,6 @@
 
 // ******************************************************************
 // declarations
-//U8 shift_spi(U8 dato);
-//void open_nvr(void);
 
 // BBSPI regs
 #ifdef BBSPI
@@ -45,7 +40,6 @@
 			U8	ssi0_meta;				// SPI meta dat capture register
 volatile	U32	ssitimer;				// ssi timer
 
-#define	SSITO_TIME	(3)
 
 // ******************************************************************
 // ***** START OF CODE ***** //
@@ -65,7 +59,7 @@ void init_ssi0(void)
 #ifdef BBSPI
 	spidr = 0;
 	spimsk = 0x80;
-	// config SCLK edge ISR
+	// config SCLK rising edge ISR, CSS falling edge flag
 	GPIO_PORTA_IM_R = 0;
 	GPIO_PORTA_IEV_R = SCLK;								// rising edge for SCLK (falling edge for CSS)
 	GPIO_PORTA_IBE_R &= ~(SCLK|CSS);						// one edge
@@ -74,6 +68,7 @@ void init_ssi0(void)
 	GPIO_PORTA_IM_R = SCLK;									// only interrupt on SCLK
 	ssitimer = 0;
 	NVIC_EN0_R = NVIC_EN0_GPIOA;							// enable GPIOA intr in the NVIC_EN regs
+	kick_ssito();
 #endif
 
 #ifndef BBSPI
@@ -135,6 +130,17 @@ U8 get_csseg(void){
 }
 
 //////////////////
+// get_spiovf returns true if SPI_OVFLW set.
+//
+U8 get_spiovf(void){
+
+	if(ssi0_statreg & SPI_OVFLW){
+		return 1;
+	}
+	return 0;
+}
+
+//////////////////
 // got_ssi0 returns true if buffer has data
 //
 U8 got_ssi0(void){
@@ -151,7 +157,6 @@ U16 get_ssi0(void){
 
 	ii = ((U16)ssi0_status[ssi0_t]) << 8;
 	ii |= ((U16)ssi0_buf[ssi0_t]) & 0xff;
-//	if(ssi0_t++ == (SPI_LEN)) ssi0_t = 0;
 	ssi0_t++;
 	return ii;
 }
@@ -223,18 +228,12 @@ void gpiof_isr(void){
 	}
 	spimsk >>= 1;
 	if(!spimsk){
-//		GPIO_PORTD_DATA_R |= sparePD7;
 		// get CS status & cmd, place in stat buff
 		pd = ~GPIO_PORTA_DATA_R;
 		pd &= CS2|CS1|CMD_DATA;
-
-		if((pd & (CS1|CS2)) == (CS1|CS2)){  //!!! debug
-			GPIO_PORTD_DATA_R ^= sparePD7;
-			GPIO_PORTD_DATA_R ^= sparePD7;
-		}
-
 		ssi0_status[ssi0_h] = pd;
 		ssi0_buf[ssi0_h] = spidr;						// get data, place in buff
+		kick_ssito();									// reset serial timeout
 		spimsk = 0x80;									// reset data rx regs for next byte
 		spidr = 0;
 		ssi0_h++;										// advance buffer pointer (auto rollover)
@@ -242,7 +241,6 @@ void gpiof_isr(void){
 			ssi0_statreg |= SPI_OVFLW;					// process buffer overflow
 			ssi0_t++;
 		}
-//		GPIO_PORTD_DATA_R &= ~sparePD7;
 	}
 	GPIO_PORTA_ICR_R = SCLK|CSS;
 #endif
@@ -275,8 +273,8 @@ void kick_ssito(void){
 //-----------------------------------------------------------------------------
 //
 // Called when timer 1B overflows (NORM mode):
-//	Timer1_B runs as 16 bit reload timer set to 5us interrupt rate
-//	This gives a 100KHz SPI clk
+//	Timer1_B runs as 16 bit reload timer set to 10ms interrupt rate
+//	Provides a time-out timer resource to the SSI driver
 //
 //-----------------------------------------------------------------------------
 
