@@ -130,6 +130,14 @@ U8 get_csseg(void){
 }
 
 //////////////////
+// get_hptr returns value of hptr
+//
+U8 get_tptr(void){
+
+	return ssi0_t;
+}
+
+//////////////////
 // get_spiovf returns true if SPI_OVFLW set.
 //
 U8 get_spiovf(void){

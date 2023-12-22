@@ -24,6 +24,9 @@
  *
  *    Project scope rev History:
  *    In-process code-n-test.
+ *    12-17-23:		SPI TO error now places a hash of horzontal lines on the display to accentuate the stale data.
+ *    				Fixed trig2 processing bug.  Now there are no errors in the IC-900 DVT.
+ *
  *    12-16-23:		Lots of debug and hair-pulling.  Finally stumbled on correct handling of the dmem/bmem and trigger
  *						system.  Since the IC-900 constantly sends data, the SW must focus on detailed bit changes in
  *    					dmem and bmem to calculate the correct trigger process so that the constant updates do not
@@ -32,7 +35,6 @@
  *					Added overflow and ssi timeout error flags.  Overflow flag persists, TO flag will clear if comms
  *						are restored.
  *					Added comments and cleaned up debug hacks.
- *
  *    12-08-23:		Added blink code to process_LCD().  Includes refresh of original segments when blink mem is written
  *    					(allows system to recover the original symbol when the blink segment is "unblinked").
  *    					Trapped BLINKOFF SPI cmd to re-trigger any blinking segments.

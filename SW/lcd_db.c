@@ -182,6 +182,8 @@ U8	seg7[16][3] = {		// 7-seg encoder LUT
 // Local Fn Declarations
 //-----------------------------------------------------------------------------
 
+void disp_errlines(void);
+
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -359,6 +361,9 @@ void process_SPI(U8 iplfl){
 			}
 			// Process CS2 data
 			if(csf2){
+				if((cs2_idx > 7) && (cs2_idx < 0x1a)){
+					ii++;
+				}
 				if(CS2_reg & CS_DECODE7){	// 7-seg decode
 					CS2_dmem[cs2_idx] = seg7[sdata & DMASK][0];
 					CS2_trig[cs2_idx] = 0x0f;
@@ -674,6 +679,7 @@ void process_ERR(U8 iplfl){
 	}
 	if(is_ssito() && !(errstat & STO_ERR)){			// if serial TO, disp err
 		disp_err(2);
+		disp_errlines();
 		errstat |= STO_ERR;
 	}
 	if(!is_ssito() && (errstat & STO_ERR)){			// clear serial TO
@@ -793,6 +799,30 @@ void disp_err(U8 mnum){
 		}
 		wrdb(0xB2, LCDCMD, STA01);							// auto write OFF
 		addr += DROW;
+	}
+	return;
+}
+
+//-----------------------------------------------------------------------------
+// disp_errlines() fills display with horiz hash lines spaced every 10 vertical pixels
+//-----------------------------------------------------------------------------
+void disp_errlines(void){
+	U8	i;
+	U8	j;
+	U16 addr;
+
+	addr = MAIN7_OFFS + (DROW*4);							// 0,0 pixel address
+	wrdb(0x98, LCDCMD, STA01);								// graphics ON, text OFF
+	for(j=0; j<12; j++){
+		wrdb((uint8_t)(addr&0xff), LCDDATA, STA01);			// pixel address
+		wrdb((uint8_t)(addr>>8), LCDDATA, STA01);			// pixel address
+		wrdb(0x24, LCDCMD, STA01);							// set address pointer
+		wrdb(0xB0, LCDCMD, STA01);							// auto write ON
+		for(i=0;i<30;i++){    								// send msg
+			wrdb(0xff, LCDDATA, STA23);						// draw 1px line
+		}
+		wrdb(0xB2, LCDCMD, STA01);							// auto write OFF
+		addr += (DROW * 10);
 	}
 	return;
 }
@@ -4998,6 +5028,7 @@ void trig_scan2(U8 mode){
 	for(i=0; i<LCD_MEMLEN; i++){
 		trg = CS2_trig[i];
 		dm = CS2_dmem[i];
+		bm = CS2_bmem[i];
 		if(trg){
 			for(j=0; j<3; j++){
 				if( ((trg&1)&&!(bm&1)&&!blinker) || ((trg&1)&&!(bm&1)&&blinker) || ((trg&1)&&(bm&1)&&blinker) ){
