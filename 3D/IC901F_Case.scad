@@ -13,7 +13,19 @@
 //----------------------------------------------------------------------------------------------------------------------
 // parametric variables:
 
+// LCD screen panel thickness
+scrnthk = 0.08*25.4;
+
+// hole expansion to compensate 3D print overage
 dskew = 0.3;
+// interface PCB
+pcbz = 14.3-scrnthk+.6;
+pcbthk = 1.6;
+// LCD mtg hole baselines
+lbx = 4+162;
+lbdx = 6.38 * 25.4;
+lby = (95-4.5-1.5)-85;
+lbdy = 3.35 * 25.4;
 
 wthick = 3.5;
 wthickt = 1.5;
@@ -26,8 +38,10 @@ bsoffsy = 41;
 bsz = 30;
 splitwid = 171 + (2*wthick);
 width = 171 + (4*wthick)+bswid;
-height = 14+13 + (wthickt);
+height = 14+13 + (wthickt) +2;
 length = 95 + (2*wthick);
+fht_in = 30;					// front inside depth
+
 bossht = 7.8;
 crad = 5;
 crad2 = crad/2;
@@ -40,10 +54,11 @@ bwid = 7;				// y
 blen = 12;				// x
 bht = 6;				// z
 bclr = .5;				// clearance
-bapron = 2;				// apron around periphery of button base
-bapht = 1;				// apron thickness
+bapron = 2;				// apron clearance around periphery of button base
+capron = bapron;		// raw apron around periphery of button base
+bapht = 2;				// apron thickness
 bnib = 2+.6;			// nib thickness
-bcham = 2;				// corner radius
+bcham = 3;				// corner radius
 bsep = 1.5;
 bpitchx = blen+bsep+(2*bapron);
 bpitchy = bwid+bsep+(2*bapron);
@@ -72,10 +87,17 @@ stht = 6.4+bapht+.6;
 
 //translate([width-(bsoffs)+bpitchx,length-17,height-dial_deep]) cylinder(r=6.9/2, h=40, $fn=32, center=true);
 
-			
+/*translate([width-(bsoffs)+bpitchx-45,length-17,21.1]) cylinder(r=6.9/2, h=9.41, $fn=32);
+translate([width-(bsoffs)+bpitchx-45,length-14,28.3]) cylinder(r=6.9/2, h=9.41, $fn=32);
+translate([width-(bsoffs)+bpitchx-45,length-22,28.3-(.08*25.4)]) cylinder(r=6.9/2, h=9.41, $fn=32);*/
+
+//translate([160,6,15.3]) 
+//spacer();
+//	translate([30,0,0]) cap(model=1);
+		
 button = 0;
 vqbtn = 0;
-sidesel = 3;
+sidesel = 1;
 dopcb = 0;
 
 if(button){
@@ -102,7 +124,7 @@ if(dopcb){
 
 //hdr20(model=0);
 
-//translate([3.5,3.5,lcdz]) lcdpcb();
+//translate([3.5,3.5,lcdz-scrnthk-.6]) lcdpcb();
 
 
 //translate([width-(bsoffs)+bpitchx,length-17,height-dial_deep]) dial(model=1);
@@ -120,7 +142,7 @@ if(dopcb){
 //translate([210,12,15.25]) cylinder(r1=2, r2=0, h=12, $fn=16);
 
 module mainpcb(mode=0){
-	translate([10-5.8,3.5,14.3-.6]){
+	translate([10-5.8,3.5,pcbz]){
 		if(mode==0){
 		// RJ45 test fit
 //			translate([0,0,-(13.5)]) cube([10,10,13.5]);
@@ -184,7 +206,7 @@ module mainpcb(mode=0){
 			translate([width-(bsoffs)-4.2,length-bsoffsy-(4*bpitchy)-3.5,15]) cap(model=10);
 
 			// debug hog-off
-//			translate([150,-.1,-.1]) cube([splitwid+.1,length+5,height+5]);
+			translate([200,-.1,-.1]) cube([splitwid+.1,length+5,height+5]);
 		}
 	}
 	if(mode==1){
@@ -322,8 +344,8 @@ module caset(side=3){
 		translate([splitwid,17.2+((length-26)/3),height-4.8]) spilot(csdeep=13.1-4.5);
 		translate([splitwid,15.2+(2*(length-26)/3),height-4.8]) spilot(csdeep=13.1-4.5);
 		
-		// pcb hog-out
-		translate([splitwid-10,15,-.1]) cube([20,length-30,18]);
+		// split line, pcb hog-out
+		translate([splitwid-10,14,-.1]) cube([20,length-28,18]);
 
 		// side 1 hog-off
 		if((side != 1) && (side !=3)){
@@ -332,9 +354,11 @@ module caset(side=3){
 		if((side != 2) && (side !=3)){
 			translate([splitwid,-.1,-.1]) cube([splitwid+.1,length+5,height+5]);
 		}
-
+		// RJ-45 opening
+		translate([lbx+3.5-(.645*25.4)-((5.3+.04)*25.4)+1.3,lby+lbdy,pcbz+pcbthk+(-.511*25.4)+((.48-.425)*25.4)-(scrnthk/2)]) cube([.587*25.4,30,.425*25.4]);
+		
 		// debug hog-off
-//		translate([210,-.1,-.1]) cube([splitwid+.1,length+5,height+5]);
+		translate([230,-.1,-.1]) cube([splitwid+.1,length+5,height+5]);
 
 	////// dial/button artifacts //////
 
@@ -375,7 +399,7 @@ module caset(side=3){
 		}
 	}
 	if((side==2) || (side==3)){
-		difference(){
+		translate([0,0,-scrnthk]) difference(){
 			union(){
 				// button spacers
 				translate([width-(bsoffs),length-bsoffsy,height]) cap(model=2);
@@ -428,10 +452,6 @@ module caset(side=3){
 }
 
 ///////////////////////////////////////////////
-lbx = 4+162;
-lbdx = 6.38 * 25.4;
-lby = (95-4.5-1.5)-85;
-lbdy = 3.35 * 25.4;
 
 module lcd(mtg=false, holes=false, csnkz = -5, hdia = .11*25.4){
 	bezelz = 8;
@@ -446,9 +466,9 @@ module lcd(mtg=false, holes=false, csnkz = -5, hdia = .11*25.4){
 	}else{
 		if(!holes){
 			// pcb+backing
-			translate([0-.25,0-.25,-19.9]) cube([170+.5,95+.5,20]);
+			translate([0-.25,0-.25,-fht_in+.1-scrnthk]) cube([170+.5,95+.5,fht_in]);
 			// LCD frame
-			translate([9-.25,6.9-.25,0]) cube([152.5+.5,88+.5,7.3]);
+			translate([9-.25,6.9-.25,-scrnthk]) cube([152.5+.5,88+.5,7.3+scrnthk]);
 			// bezel opening
 			translate([(170-(53))/2,(95/2)+bezy,bezelz]) rotate([0,0,45]) cylinder(r1=sqrt(2)*77/2, r2=(sqrt(2)*(77/2))+10, h=5, $fn=4);
 			translate([(170+(53))/2,(95/2)+bezy,bezelz]) rotate([0,0,45]) cylinder(r1=sqrt(2)*77/2, r2=(sqrt(2)*(77/2))+10, h=5, $fn=4);
@@ -468,8 +488,8 @@ module lcd(mtg=false, holes=false, csnkz = -5, hdia = .11*25.4){
 			translate([4+162,(95-4.5)-85,csnkz]) cylinder(r2=hdia/2, r1=(hdia/2)+2, h= 2, $fn=32);
 		}
 		if(!holes){
-			// wire holes clearance
-			translate([179-18,14,0]) cube([9,67,2]);
+			// connector/wire holes clearance
+			translate([179-18,14,-8]) cube([9,67,10]);
 		}
 	}
 }
@@ -602,17 +622,19 @@ module cap(model=0, colr=1){
 				if(colr==1) color("yellow"){
 					translate([0,0,(-bht+brelief)/2]) minkowski(){
 						cube([blen-(bcham), bwid-(bcham), bht-(bcham)+brelief], center=true);
-						sphere(r=bcham/2, $fn=20);
+						sphere(r=bcham/2, $fn=32);
 					}
 				}
 				if(colr==2) color("red"){
 					translate([0,0,(-bht+brelief)/2]) minkowski(){
-					cube([blen-(bcham), bwid-(bcham), bht-(bcham)+brelief], center=true);
-					sphere(r=bcham/2, $fn=16);
+					cube([blen-(bcham), bwid-(bcham), bht-(bcham)+brelief-4], center=true);
+					sphere(r=bcham/2, $fn=32);
 					}
 				}
-				translate([0,0,-bht+(bapht/2)]) cube([blen+(2*bapron), bwid+(2*bapron), bapht], center=true);
-				translate([0,0,-bht-.35-.3]) cube([3, 3, bnib], center=true);
+				// apron
+				translate([0,0,-bht+(bapht/2)]) cube([blen+(2*capron), bwid+(2*capron), bapht], center=true);
+				// contact nib
+				translate([0,0,-bht-.35-.3]) cube([2, 8, bnib+scrnthk], center=true);
 			}
 			// corner chams
 			translate([-capronx/2,-caprony/2,0]) cylinder(r=capcham, h=20, $fn=4, center=true);
@@ -621,13 +643,14 @@ module cap(model=0, colr=1){
 			translate([capronx/2,caprony/2,0]) cylinder(r=capcham, h=20, $fn=4, center=true);
 		}
 	}
+	// spacer supports
 	if(model == 2){
 	qoffs=0;
 	qoffy=0;
-		translate([-(capronx/2)-qoffs,-(caprony/2)-qoffy,-bht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht]);
-		translate([(capronx/2)+qoffs,-(caprony/2)-qoffy,-bht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht]);
-		translate([-(capronx/2)-qoffs,(caprony/2)+qoffy,-bht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht]);
-		translate([(capronx/2)+qoffs,(caprony/2)+qoffy,-bht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht]);
+		translate([-(capronx/2)-qoffs,-(caprony/2)-qoffy,-bht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+2+scrnthk]);
+		translate([(capronx/2)+qoffs,-(caprony/2)-qoffy,-bht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+2+scrnthk]);
+		translate([-(capronx/2)-qoffs,(caprony/2)+qoffy,-bht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+2+scrnthk]);
+		translate([(capronx/2)+qoffs,(caprony/2)+qoffy,-bht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+2+scrnthk]);
 
 //		translate([-(capronx/2)-.17,-(caprony/2)-.17,-bht+(bapht/2)-stht]) cylinder(r=stcham, h=stht, $fn=4, center=false);
 //		translate([capronx/2,-caprony/2,-bht+(bapht/2)-stht]) cylinder(r=stcham, h=stht, $fn=4, center=false);
@@ -653,13 +676,16 @@ module cap(model=0, colr=1){
 }
 
 module vq(model=1){
-capronx = bqlen+(2*(bapron+bclr));
-caprony = bqwid+(2*(bapron+bclr));
-capcham = 2.5;
+qcapronx = bqlen+(2*(bapron+bclr));
+qcaprony = bqwid+(2*(bapron+bclr));
+qcapcham = 2.5;
 
 	if(model == 0){
+		// main body
 		translate([0,0,(-bht/2)+(2*bclr)]) cube([bqlen+bclr, bqwid+bclr, bht+(4*bclr)], center=true);
+		// apron
 		translate([0,0,-bht+(bapht/2)-.1]) cube([bqlen+(2*(bapron+bclr)), bqwid+(2*(bapron+bclr)), bapht], center=true);
+		// pivot axle
 		translate([0,0,-bht]) rotate([0,90,0]) cylinder(r=2, h=bqlen+(2*(bapron+bclr)), $fn=32, center=true);
 	}else{
 		difference(){
@@ -667,18 +693,20 @@ capcham = 2.5;
 				// main cap body
 				color("yellow") translate([0,0,(-bht+brelief)/2]) minkowski(){
 					cube([bqlen-(bcham), bqwid-(bcham)-brocker, bht-(bcham)+brelief+1], center=true);
-					sphere(r=bcham/2, $fn=16);
+					sphere(r=bcham/2, $fn=32);
 				}
 				// apron
-				translate([0,0,-bht+(bapht/2)]) cube([bqlen+(2*bapron), bqwid+(2*bapron), bapht], center=true);
+				translate([0,0,-bht]) cube([bqlen+(2*bapron), bqwid+(2*bapron), bapht], center=true);
+				// contact nib
+				translate([0,0,-bht-bapron+.4]) cube([2, bqwid+3.5, bnib+scrnthk-2], center=true);
 				// rocker axle
 				translate([0,0,-bht+1]) rotate([0,90,0]) cylinder(r=2-.1, h=bqlen+(2*(bapron+bclr)), $fn=32, center=true);
 			}
 			// apron chams
-			translate([-capronx/2,-caprony/2,0]) cylinder(r=capcham, h=20, $fn=4, center=true);
-			translate([capronx/2,-caprony/2,0]) cylinder(r=capcham, h=20, $fn=4, center=true);
-			translate([-capronx/2,caprony/2,0]) cylinder(r=capcham, h=20, $fn=4, center=true);
-			translate([capronx/2,caprony/2,0]) cylinder(r=capcham, h=20, $fn=4, center=true);
+			translate([-qcapronx/2,-qcaprony/2,0]) cylinder(r=capcham, h=20, $fn=4, center=true);
+			translate([qcapronx/2,-qcaprony/2,0]) cylinder(r=capcham, h=20, $fn=4, center=true);
+			translate([-qcapronx/2,qcaprony/2,0]) cylinder(r=capcham, h=20, $fn=4, center=true);
+			translate([qcapronx/2,qcaprony/2,0]) cylinder(r=capcham, h=20, $fn=4, center=true);
 		}
 	}
 	
@@ -728,6 +756,17 @@ module spilot(csdeep=5, size=2){
 			translate([0,0,-csdeep]) cylinder(r1=5.4/2, r2=0, h = 5.4/2, $fn=16);
 			translate([0,0,-10-csdeep+.01]) cylinder(r=5.6/2, h = 10, $fn=16);
 		}
+	}
+}
+
+////////////
+// pcb spacer
+screenthk = 1.6;
+
+module spacer(thk=.125*25.4){
+	difference(){
+		cylinder(r=6.5/2, h=thk, $fn=32);
+		cylinder(r=3/2, h=20, $fn=16, center=true);
 	}
 }
 
