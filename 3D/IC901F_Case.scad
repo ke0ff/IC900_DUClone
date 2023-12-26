@@ -497,7 +497,21 @@ module back(side=1){
 			}
 		}
 		// RJ-45 opening
-#		translate([lbx+3.5-(.645*25.4)-((5.3+.04)*25.4)+1.3,lby+lbdy,0]) cube([.587*25.4,30,.4*25.4]);
+		translate([lbx+3.5-(.645*25.4)-((5.3+.04)*25.4)+1.3-((.67-.587)*25.4/2),lby+lbdy+12.5-21,-.05*25.4]) cube([.67*25.4,30,.4*25.4]);
+		// base mounting pattern
+cenx = 100;
+ceny = length/2;
+		translate([cenx-(70.2/2), ceny-(30.1/2),0]) cylinder(r=3.3/2, h=20, $fn=16, center=true);
+		translate([cenx-(70.2/2), ceny+(30.1/2),0]) cylinder(r=3.3/2, h=20, $fn=16, center=true);
+		translate([cenx+(70.2/2), ceny-(30.1/2),0]) cylinder(r=3.3/2, h=20, $fn=16, center=true);
+		translate([cenx+(70.2/2), ceny+(30.1/2),0]) cylinder(r=3.3/2, h=20, $fn=16, center=true);
+		// tab mtg
+tabx = (142+178)/2;
+taby = length/2;
+		translate([tabx-(25/2), taby-(50/2),-bheight]) stoff(delz=wthick);
+		translate([tabx+(25/2), taby-(50/2),-bheight]) stoff(delz=wthick);
+		translate([tabx-(25/2), taby+(50/2),-bheight]) stoff(delz=wthick);
+		translate([tabx+(25/2), taby+(50/2),-bheight]) stoff(delz=wthick);
 	}
 }
 module stoff(delz=1, model=0){
@@ -505,7 +519,7 @@ module stoff(delz=1, model=0){
 		translate([0,0,delz]) cylinder(r=3.5, h=12.2, $fn=16);
 	}else{
 		cylinder(r=.13*25.4/2, h=50, $fn=16, center=true);
-		translate([0,0,-.1]) cylinder(r1=5/2, r2=0, h=5/2, $fn=32);
+		translate([0,0,-.1]) cylinder(r1=6/2, r2=0, h=6/2, $fn=32);
 	}
 }
 
