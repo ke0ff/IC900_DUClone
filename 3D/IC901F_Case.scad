@@ -12,7 +12,7 @@
 		
 button = 0;			// button caps, 1 = normal, 2 = short (power)
 vqbtn = 0;			// v/q button
-sidesel = 1;		// main case, 1 = lcd side, 2 = button side, 3 = both
+sidesel = 2;		// main case, 1 = lcd side, 2 = button side, 3 = both
 backsel = 0;		// back cover, 1 = lcd side, 2 = button side, 3 = both
 dopcb = 0;			// display PCB for fit-check
 doeclip = 0;		// back-side clip piece
@@ -118,6 +118,10 @@ pknobdia = 14;
 pknobht = 6;
 
 echo("cpotx", cpotx);
+
+subrx = 198.6;
+subry = 68.2;
+trledia = 4.32+.5;				// no larger than 4mm dia here !!!
 
 ///////////////////////////////////////////////////////////////////////////////
 // plot directive processing //////////////////////////////////////////////////
@@ -383,6 +387,11 @@ module caset(side=3){
 		if((side==2)||(side==3)){
 			// edge clip receivers
 			ec_placed();
+			// t/r led pipes
+			translate([subrx, subry+2, height]) trled(model=0);
+			translate([subrx+22.6+1.2, subry+2, height]) trled(model=0);
+			// lock slot
+			translate([width,42.3,pcbz]) cube([20,2,2], center=true);
 		}
 		// bottom edge chams
 		translate([0,chamfer,-.01]) rotate([135,0,0]) cube([width+10,5,5]);
@@ -423,8 +432,8 @@ module caset(side=3){
 		if((side != 1) && (side !=3)){
 			translate([-.1,-.1,-.1]) cube([splitwid+.1,length+5,height+5]);
 		}
-		// side 2 hog-off
 		if((side != 2) && (side !=3)){
+			// side 2 hog-off
 			translate([splitwid,-.1,-.1]) cube([splitwid+.1,length+5,height+5]);
 		}
 		// RJ-45 opening
@@ -931,7 +940,7 @@ module dial(model=0, sl=20){
 		else{
 			cylinder(r=dialr, h=7, $fn=32);
 		}
-#		cylinder(r=6/2, h=sl, $fn=32);
+		cylinder(r=6/2, h=sl, $fn=32);
 		// knob
 		color("black") translate([0,0,sl-11.7+2]) cylinder(r=21/2, h=11.7, $fn=64, center=false);
 		color("black") translate([0,0,sl-11.7+2]) cylinder(r=24/2, h=2, $fn=64, center=false);
@@ -1125,6 +1134,18 @@ l2z = j4z;
 
 	translate([82.3-1.5,49.4-1.5,pcbz-j4z-1.5]) cube([14.6+3,7.4+3,j4z]);
 	translate([38-1.5,36.2-1.5,pcbz-l2z-1.5]) cube([12.6+3,12.6+3,l2z]);
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+module trled(model=0){
+
+
+	if(model==0){
+		cylinder(r=trledia/2, h=20, $fn=16, center=true);
+	}else{
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
