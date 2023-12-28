@@ -390,7 +390,7 @@ module caset(side=3){
 			// t/r led pipes
 			translate([subrx, subry+2, height]) trled(model=0);
 			translate([subrx+22.6+1.2, subry+2, height]) trled(model=0);
-			// lock slot
+			// lock slot -- cube is placekeeper !!!
 			translate([width,42.3,pcbz]) cube([20,2,2], center=true);
 		}
 		// bottom edge chams
