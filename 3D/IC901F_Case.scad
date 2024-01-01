@@ -11,8 +11,8 @@
 // plot directives.  Enable/disable plot features:
 		
 button = 0;			// button caps, 1 = normal, 2 = short (power)
-vqbtn = 0;			// v/q button
-sidesel = 2;		// main case, 1 = lcd side, 2 = button side, 3 = both
+vqbtn = 1;			// v/q button
+sidesel = 0;		// main case, 1 = lcd side, 2 = button side, 3 = both
 backsel = 0;		// back cover, 1 = lcd side, 2 = button side, 3 = both
 dopcb = 0;			// display PCB for fit-check
 doeclip = 0;		// back-side clip piece
@@ -99,7 +99,7 @@ capronx = blen+(2*(bapron+bclr));
 caprony = bwid+(2*(bapron+bclr));
 capcham = 3;
 stcham = 2.5;
-stht = 6.4+bapht+.6;
+stht = 6.4+bapht+.6+.6;
 
 piezx = 85;
 piezo_dia = 34.8+.5;
@@ -183,7 +183,8 @@ if(dopiezo){
 
 //hdr20(model=0);
 
-//translate([3.5,3.5,lcdz-scrnthk-.6]) lcdpcb();
+//translate([3.5,3.5,lcdz-scrnthk-.6])
+//lcdpcb();
 
 
 //translate([width-(bsoffs)+bpitchx,length-17,height-dial_deep]) dial(model=1);
@@ -200,7 +201,7 @@ if(dopiezo){
 //dial(model=0);
 //translate([210,12,15.25]) cylinder(r1=2, r2=0, h=12, $fn=16);
 
-/////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
 module mainpcb(mode=0){
 
 pgmz = .2*25.4;
@@ -849,12 +850,12 @@ module lcdpcb(csnkz = -5, hdia = .11*25.4){
 
 	difference(){
 		// pcb+backing
-		translate([0,0,0]) cube([170+.5,95+.5,1.6]);
+		translate([0,0,0]) cube([170+.5,93+.5,1.6]);
 		// mtg holes
-		translate([4,95-4.5-.6,-20]) cylinder(r=hdia/2, h= 20+bossht-1, $fn=16);
-		translate([4,(95-4.5-.8)-85,-20]) cylinder(r=hdia/2, h= 20+bossht-1, $fn=16);
-		translate([4+162+.7,95-4.5+.3,-20]) cylinder(r=hdia/2, h= 20+bossht-1, $fn=16);
-		translate([4+162,(95-4.5-1.5)-85,-20]) cylinder(r=hdia/2, h= 20+bossht-1, $fn=16);
+		translate([4,88.5,-20]) cylinder(r=hdia/2, h= 20+bossht-1, $fn=16);
+		translate([4,3.6,-20]) cylinder(r=hdia/2, h= 20+bossht-1, $fn=16);
+		translate([165.8,88.5,-20]) cylinder(r=hdia/2, h= 20+bossht-1, $fn=16);
+		translate([165.8,3.6,-20]) cylinder(r=hdia/2, h= 20+bossht-1, $fn=16);
 		// edge notches
 		translate([15.9,-.1,-.1]) cube([5.9,5.2+.1,10]);
 		translate([27.9,-.1,-.1]) cube([113.8,5.2+.1,10]);
@@ -864,13 +865,76 @@ module lcdpcb(csnkz = -5, hdia = .11*25.4){
 	}
 	difference(){
 		// LCD frame
-		translate([9-.25,6.9-.25,0]) cube([152.5+.5,88+.5,7.3]);
+		translate([9-.25,6.5+.8,0]) cube([152.5+.5,87,7.3]);
 		translate([21,12,7.3-.7]) cube([127.8,73.8,5]);
 	}
 	// 20p header
 	translate([170-5.8,18.5,0]) hdr20(model=1);
 	// backlight -
 	translate([170-2.7,58,0]) backlight(model=1);
+	// small frame tabs
+	translate([14.6,6.4,-3.1]) cube([5.8,4.9,3.1]);
+	translate([150,6.4,-3.1]) cube([5.8,4.9,3.1]);
+	translate([8.4,17.9,-3.1]) cube([4.9,5.8,3.1]);
+	translate([8.4,47.4,-3.1]) cube([4.9,5.8,3.1]);
+	translate([8.4,77.4,-3.1]) cube([4.9,5.8,3.1]);
+	translate([156,17.9,-3.1]) cube([4.9,5.8,3.1]);
+	translate([156,47.4,-3.1]) cube([4.9,5.8,3.1]);
+	translate([156,77.4,-3.1]) cube([4.9,5.8,3.1]);
+	// lg frame tabs
+	translate([10.5+(5.8/2),93.5,0]) frmtab();
+	translate([38.8+(5.8/2),93.5,0]) frmtab();
+	translate([66.7+(5.8/2),93.5,0]) frmtab();
+	translate([97.8+(5.8/2),93.5,0]) frmtab(left=0);
+	translate([125.9+(5.8/2),93.5,0]) frmtab(left=0);
+	translate([153.5+(5.8/2),93.5,0]) frmtab(left=0);
+	// lcd ICs
+	translate([18.3,14.8,-1.5]) cube([13.8,13.8,1.5]);
+	translate([18.3,54.5,-1.5]) cube([13.8,13.8,1.5]);
+	translate([46.1,66.5,-1.5]) cube([13.8,13.8,1.5]);
+	translate([82.6,66.5,-1.5]) cube([13.8,13.8,1.5]);
+	translate([118.6,66.5,-1.5]) cube([13.8,13.8,1.5]);
+	// RAM
+	translate([105.5,8.1+5.5,-2.9]) cube([10.2,18.2,2.9]);
+	// RAIO
+	translate([126.7,18.4,-1.5]) cube([14,20,1.5]);
+	// xtal
+	translate([139.5,47,-1.9]) cube([7.2,2.7,1.9]);
+	// L1
+	translate([54.1,13.2+5.4,-3.3]) cylinder(r=4.7/2, h=3.3, $fn=16);
+	// caps
+	translate([40.8,27.1+5.4,-2]) cube([3.6,2.9,2]);
+	translate([40.8,8.4+27.1+5.4,-2]) cube([3.6,2.9,2]);
+	translate([69.1,9.8+5.4,-2.8]) cube([6.1,3.4,2.8]);
+	translate([69.1,13.1+9.8+5.4,-2.8]) cube([6.1,3.4,2.8]);
+	// D1
+	translate([58.6,9.7+5.4,-2.8]) cube([6.9,3.3,2.8]);
+	// misc ICs
+	translate([63,16.1+5.4,-1.5]) cube([5,5,1.5]);
+	translate([67.1,29.7+5.4,-1.5]) cube([5,8.7,1.5]);
+	translate([85.1,19.5+5.4,-1.5]) cube([5,8.7,1.5]);
+
+	
+}
+
+module frmtab(left=1){
+	translate([0,0,-2.4]){
+		if(left){
+			difference(){
+				cylinder(r=5.8/2, h=2.4, $fn=16);
+				translate([-3,0,-.1]) cube([6,6,4]);
+			}
+			translate([5.8/2,0,0]) cylinder(r=1, h=2.4, $fn=16);
+			translate([(5.6/2),0,0]) cube([9.1,1,2.4]);
+		}else{
+			difference(){
+				cylinder(r=5.8/2, h=2.4, $fn=16);
+				translate([-3,0,-.1]) cube([6,6,4]);
+			}
+			translate([-5.8/2,0,0]) cylinder(r=1, h=2.4, $fn=16);
+			translate([-9.1-(5.6/2),0,0]) cube([9.1,1,2.4]);
+		}
+	}
 }
 
 module pin(){
@@ -1033,7 +1097,7 @@ qcapcham = 2.5;
 		// apron
 		translate([0,0,-bht+(bapht/2)-.1]) cube([bqlen+(2*(bapron+bclr)), bqwid+(2*(bapron+bclr)), bapht], center=true);
 		// pivot axle
-		translate([0,0,-bht]) rotate([0,90,0]) cylinder(r=2, h=bqlen+(2*(bapron+bclr)), $fn=32, center=true);
+		translate([0,0,-bht+1]) rotate([0,90,0]) cylinder(r=2, h=bqlen+(2*(bapron+bclr)), $fn=32, center=true);
 	}else{
 		difference(){
 			union(){
@@ -1043,7 +1107,7 @@ qcapcham = 2.5;
 					sphere(r=bcham/2, $fn=32);
 				}
 				// apron
-				translate([0,0,-bht]) cube([bqlen+(2*bapron), bqwid+(2*bapron), bapht], center=true);
+				translate([0,0,-bht-.5]) cube([bqlen+(2*bapron), bqwid+(2*bapron), bapht], center=true);
 				// contact nib
 				translate([0,0,-bht-bapron+.4]) cube([2, bqwid+3.5, bnib+scrnthk-2], center=true);
 				// rocker axle
