@@ -6,19 +6,6 @@
 //
 // Rev-001, 12/25/2023
 //	initial code
-
-////////////////////////////////////////////////////////////////////////////////
-// plot directives.  Enable/disable plot features:
-		
-button = 0;			// button caps, 1 = normal, 2 = short (power)
-vqbtn = 1;			// v/q button
-sidesel = 0;		// main case, 1 = lcd side, 2 = button side, 3 = both
-backsel = 0;		// back cover, 1 = lcd side, 2 = button side, 3 = both
-dopcb = 0;			// display PCB for fit-check
-doeclip = 0;		// back-side clip piece
-dopiezo = 0;		// piezo cover
-dordu = 0;			// RDU PCB for fit-check
-
 ////////////////////////////////////////////////////////////////////////////////
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -64,8 +51,8 @@ chamfer = .8;
 lcdz = height-14+4.5; //13+4.5;
 scham = 4;
 
-num1_thru = .09*25.4;
-num1_thrd = .05*25.4;
+num1_thru = (.09*25.4);
+num1_thrd = (.05*25.4)+.3;
 
 // buttons
 bwid = 7;				// y
@@ -121,10 +108,30 @@ echo("cpotx", cpotx);
 
 subrx = 198.6;
 subry = 68.2;
-trledia = 4.32+.5;				// no larger than 4mm dia here !!!
+trledia = 4.32;				// no larger than 4mm dia here !!! 4.32mm = 11/64 clearance drill (4.366mm)
 
 ///////////////////////////////////////////////////////////////////////////////
 // plot directive processing //////////////////////////////////////////////////
+		
+button = 0;			// button caps, 1 = normal, 2 = short (power)
+vqbtn = 0;			// v/q button
+dopivot = 0;		// v/q pivot wedge
+sidesel = 0;		// main case, 1 = lcd side, 2 = button side, 3 = both
+backsel = 0;		// back cover, 1 = lcd side, 2 = button side, 3 = both
+dopcb = 0;			// display PCB for fit-check
+doeclip = 0;		// back-side clip piece
+dopiezo = 0;		// piezo cover
+dordu = 0;			// RDU PCB for fit-check
+dosunwin = 0;		// sunlight window
+dopot = 1;			// pot knob
+
+//////////////////////
+
+//mainpcb();
+
+// ruler
+//translate([183,22,0]) cylinder(r=3, h=12.3, $fn=8);
+
 if(button==1){
 	cap(model=1);
 }
@@ -158,7 +165,10 @@ if(doeclip){
 }
 
 if((backsel==1)||(backsel==3)){
-	back1();
+	difference(){
+		back1();
+//		translate([82,-10,-10]) cube([200,150, 40]);		// debug section
+	}
 }
 
 if((backsel==2)||(backsel==3)){
@@ -170,9 +180,26 @@ if(dopiezo){
 	translate([piezx,77,2*wthick]) rotate([180,0,0]) piezo(model = 1, depth=3*wthick, film = 1);
 }
 
+if(dopivot){
+	pivot();
+}
+
+if(dosunwin){
+	sunwin();
+}
+
+if(dopot){
+	cpknob(model=1);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 // test instantiations
+
+//deskstand();
+
+// spacer
+//cube([3.2,6,4]);
 
 //translate([cpotx,cpoty,pcbz]) cpknob(model = 1);
 
@@ -198,8 +225,11 @@ if(dopiezo){
 
 //bcaps();
 
-//dial(model=0);
+//dial();
 //translate([210,12,15.25]) cylinder(r1=2, r2=0, h=12, $fn=16);
+
+// ruler
+//translate([160,0,13.4-5.4]) cylinder(r=4, h=17.1+5.4, $fn=16);
 
 ////////////////////////////////////////////////////////////////////////////////////
 module mainpcb(mode=0){
@@ -360,6 +390,9 @@ module bcaps(mode=1){
 // top shell
 
 module caset(side=3){
+	if((side==1)||(side==3)){
+		translate([166,20,23.3]) rotate([0,0,270]) rotate([0,180,0]) linear_extrude(1.2) text("KE0FF V1.0", size=6);					// version & PN texts
+	}
 	difference(){
 		union(){
 			difference(){
@@ -382,7 +415,6 @@ module caset(side=3){
 			translate([width-crad2,length-crad2,0]) corner(height);
 		}
 
-//		translate([15,15,1.5]) linear_extrude(1) text("REV 4", size=6);					// version & PN texts
 //		translate([15,25,1.5]) linear_extrude(1) text("TivaLP bot", size=6);
 
 		if((side==2)||(side==3)){
@@ -391,8 +423,11 @@ module caset(side=3){
 			// t/r led pipes
 			translate([subrx, subry+2, height]) trled(model=0);
 			translate([subrx+22.6+1.2, subry+2, height]) trled(model=0);
-			// lock slot -- cube is placekeeper !!!
-			translate([width,42.3,pcbz]) cube([20,2,2], center=true);
+			// dim/lock button
+			translate([width,42.3-24.9,pcbz+.53-5.5]) cube([20,4.5,4.5], center=true);
+			translate([width-.9,42.3-24.9,pcbz+.53-5.5]) rotate([0,270,0]) rotate([0,0,45]) cylinder(r1=7, r2=0, h=2, $fn=4, center=true);
+			// groove for sw stud
+			translate([width-wthick-.5,42.3-24.9,pcbz+.53-5.5-4]) cube([4.5,4.5,10], center=true);
 		}
 		// bottom edge chams
 		translate([0,chamfer,-.01]) rotate([135,0,0]) cube([width+10,5,5]);
@@ -440,7 +475,8 @@ module caset(side=3){
 		// RJ-45 opening
 		translate([lbx+3.5-(.645*25.4)-((5.3+.04)*25.4)+1.3,lby+lbdy,pcbz+pcbthk+(-.511*25.4)+((.48-.425)*25.4)-(scrnthk/2)-(.08*25.4)]) cube([.587*25.4,30,.425*25.4]);
 		// contrast pot knob opening
-		translate([cpotx,cpoty,pcbz]) cpknob();
+		translate([cpotx,cpoty,pcbz-5.4]) cpknob();
+		translate([cpotx,cpoty,pcbz-5.4-4]) cube([10.5,30,10], center=true);
 		
 		// debug hog-off
 //		translate([100,-.1,-.1]) cube([splitwid+.1,length+5,height+5]);
@@ -450,10 +486,12 @@ module caset(side=3){
 		if((side==2)||(side==3)){
 			// dial
 			translate([width-(bsoffs)+bpitchx,length-17,height-dial_deep]) dial(model=0);
+			translate([width-(bsoffs)+bpitchx,length-17,height-dial_deep]) rotate([0,0,8]) dial(model=0);
+			translate([width-(bsoffs)+bpitchx,length-17,height-dial_deep]) rotate([0,0,-8]) dial(model=0);
 			// button hog-out
 			difference(){
 				// button chamber
-				translate([width-bswid-(wthick)+1,wthick,height-bsz-wthickt-bht+1.5]) cube([bswid-1, bslen, bsz]);
+				translate([width-bswid-(wthick)+1,wthick,height-bsz-wthickt-bht+1.5]) cube([bswid-.5, bslen, bsz]);
 				// dial pedestal
 				translate([width-(bsoffs)+bpitchx,length-17,height-dial_deep]) cylinder(r=29/2, h=30, $fn=64, center=false);
 			}
@@ -509,12 +547,12 @@ module caset(side=3){
 
 				// v/q spacers
 				translate([width-(bsoffs)-3,length+2.2,height]){
-					translate([-(capronx/2)+2.5,-(caprony/2),-bht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht]);
-					translate([-(capronx/2)+14.5,-(caprony/2),-bht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht]);
+					translate([-(capronx/2)+2.5,-(caprony/2),-bht+(bapht/2)-stht-.465]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+3]);
+					translate([-(capronx/2)+14.5,-(caprony/2),-bht+(bapht/2)-stht-.465]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+3]);
 				}
 				translate([width-(bsoffs)+38,length+2.2,height]){
-					translate([-(capronx/2)+2.5,-(caprony/2),-bht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht]);
-					translate([-(capronx/2)+14.5,-(caprony/2),-bht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht]);
+					translate([-(capronx/2)+2.5,-(caprony/2),-bht+(bapht/2)-stht-.465]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+3]);
+					translate([-(capronx/2)+14.5,-(caprony/2),-bht+(bapht/2)-stht-.465]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+3]);
 				}
 			}
 			// spacer screw holes
@@ -535,7 +573,7 @@ module caset(side=3){
 		}
 	}
 }
-///////////////////////////////////////////////
+/////////////////////////////////////////////// BACK1 ///////////////////////////////////////////////////////////////////////////
 
 module back1(){
 cenx = 100;
@@ -566,6 +604,8 @@ taby = length/2;
 			difference(){
 				// outside panel
 				union(){
+					// contrast pot
+					translate([cpotx,wthick/2,pcbz-5.4-1]) cube([10.25,wthick,6], center=true);
 					cube([splitwid,length,bheight]);
 					// standoff bodies
 					translate([10-5.8-.7,3.5,0]){
@@ -589,15 +629,24 @@ taby = length/2;
 		// debug hog-off
 //		translate([100,-.1,-(height+5)/2]) cube([splitwid+.1,length+5,height+5]);
 
+		// contrast pot
+		translate([cpotx,cpoty,pcbz-5.4]) cpknob();
+//		translate([cpotx,cpoty,pcbz-5.4-4]) cube([10.5,30,10], center=true);
+
 		// light dome
 		translate([domex,domey,0]) ltdome();
+		// light dome mtg
+		translate([domex,domey+15,-2]) cylinder(r=num1_thrd/2, h=7, $fn=16);
+		translate([domex,domey-15,-2]) cylinder(r=num1_thrd/2, h=7, $fn=16);
 		// piezo spkr
-		translate([piezx,77,bheight]) piezo(model = 0, depth=2*wthick-1, film = 1);
+		translate([piezx,77,bheight+.25]) piezo(model = 0, depth=2*wthick-1, film = 1);
 //		translate([138,77,2*wthick]) rotate([180,0,0]) piezo(model = 1, depth=3*wthick, film = 1);
 		// RDU pcb hogouts
 		rduho();
 		// RJ-45 opening
 		translate([lbx+3.5-(.645*25.4)-((5.3+.04)*25.4)+1.3-((.67-.587)*25.4/2),lby+lbdy+12.5-21,-.05*25.4]) cube([.67*25.4,30,.4*25.4]);
+		// piezo conn hogout
+		translate([100,29,-bheight+1]) cube([16,22.5,10]);
 		// base mounting pattern
 		translate([cenx-(70.2/2), ceny-(30.1/2),0]) cylinder(r=3.3/2, h=20, $fn=16, center=true);
 		translate([cenx-(70.2/2), ceny+(30.1/2),0]) cylinder(r=3.3/2, h=20, $fn=16, center=true);
@@ -621,16 +670,18 @@ taby = length/2;
 	translate([crad2,crad2,-bheight]) cornerb(bheight);
 	translate([crad2,length-crad2,-bheight]) cornerb(bheight);
 	// nomenclature
-	translate([40,20,bheight-.01]) linear_extrude(1) text("IC-900F RCU", size=10);
-	translate([40,12,bheight-.01]) linear_extrude(1) text("REV-   ke0ff JAN-2024", size=6);
+	translate([40,18,bheight-.01]) linear_extrude(1) text("IC-900F RCU", size=10);
+	translate([40,10,bheight-.01]) linear_extrude(1) text("REV-   KE0FF   FEB-2024", size=6);
 }
 
-/////////////////////////////									////////// BACK2 ///////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////// BACK2 ///////////////////////////////////////////////////////////////////////////
 module back2(){
 cenx = 100;
 ceny = length/2;
 tabx = (142+178)/2;
 taby = length/2;
+pgmz = .2*25.4;
+jlcdz = 8.9;
 
 	difference(){
 		translate([0,0,-bheight]){
@@ -687,6 +738,13 @@ taby = length/2;
 				}
 			}
 		}
+		// lcd conn hog-out
+		translate([10-5.8,3.5,pcbz-.6-1.5]) translate([164.5-3.5-2,22.5-4.2-2,-jlcdz]) cube([7.4+4,23.1+4,jlcdz]);
+		// mid hog-out
+		translate([190,6,-3.5+2]) cube([24,83,20]);
+		translate([196,73,-3.5+2]) cube([28,23.5,20]);
+		// tab hog-out
+//		translate([147,32,1.5]) cube([28,38,20]);
 		// edge clip holes
 		translate([width-17+3,35,wthick]) edgeclip(model=0);
 		// inside panel trims
@@ -717,7 +775,7 @@ taby = length/2;
 //	translate([width-17+3,35,wthick]) edgeclip(model=1);		// for fit check
 }
 
-/////////////////////////////									////////// edge-clip: placed ///////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////// edge-clip: placed ///////////////////////////////////////////////////////////////////////////
 module ec_placed(){
 
 	translate([width-17+3,35,wthick]) edgeclip(model=1, exp = 0.5);
@@ -726,7 +784,7 @@ module ec_placed(){
 
 module stoff(delz=1, model=0){
 	if(model){
-		translate([0,0,delz]) cylinder(r=3, h=12.85, $fn=16);
+		translate([0,0,delz]) cylinder(r=3, h=12.85-.14-.86, $fn=16);
 	}else{
 		cylinder(r=.13*25.4/2, h=50, $fn=16, center=true);
 		translate([0,0,-.1]) cylinder(r1=6/2, r2=0, h=6/2, $fn=32);
@@ -734,8 +792,8 @@ module stoff(delz=1, model=0){
 }
 
 module bstoff(delz=1){
-	translate([0,0,delz]) cylinder(r=2, h=12.85, $fn=16);
-	translate([0,0,delz+2]) cylinder(r1=12/2, r2=0, h=10, $fn=16);
+	translate([0,0,delz]) cylinder(r=2, h=12.4, $fn=16);
+	translate([0,0,delz+2]) cylinder(r1=12/2, r2=0, h=9.8, $fn=16);
 }
 
 module edgeclip(model=1, exp=0){		// model==1 is the part, model==0 is the threaded hole.  exp is used for the negative into the case
@@ -743,21 +801,34 @@ module edgeclip(model=1, exp=0){		// model==1 is the part, model==0 is the threa
 	if(model){
 		difference(){
 			union(){
+				// main sections
 				cube([9,14,5]);
+				translate([0,26,0]) cube([9,14,5]);
+				// tie-section
+				cube([3,30,5]);
 				if(exp==0){
+					// part tongues
 					translate([0,0,2.5]) cube([11+(wthick/2),14,2.5]);
 					translate([0,26,2.5]) cube([11+(wthick/2),14,2.5]);
 				}else{
+					// tongue hog-out
 					translate([0,-exp/2,2.5-(exp/2)]) cube([11+(wthick/2)+(exp/2),14+exp,2.5+exp]);
 					translate([0,26-exp/2,2.5-exp/2]) cube([11+(wthick/2)+(exp/2),14+exp,2.5+exp]);
 				}
-				translate([0,26,0]) cube([9,14,5]);
-				cube([3,30,5]);
 			}
+			// mtg holes
 			translate([5,7,-wthick]) cylinder(r=.09*25.4, h=10, $fn=16);
 			translate([5,7+26,-wthick]) cylinder(r=.09*25.4, h=10, $fn=16);
+			// mtg c-sinks
+			translate([5,7,5.1-(6.5/2)-.5]) cylinder(r1=0, r2=6.5/2, h=6.5/2, $fn=16);
+			translate([5,7,5.1-.51]) cylinder(r=6.5/2, h=6.5/2, $fn=16);
+
+			translate([5,7+26,5.1-(6.5/2)-.5]) cylinder(r1=0, r2=6.5/2, h=6.5/2, $fn=16);
+			translate([5,7+26,5.1-.51]) cylinder(r=6.5/2, h=6.5/2, $fn=16);
+
 		}
 	}else{
+		// mtg hole negatives (for mating part diff)
 		translate([5,7,-wthick-2.9]) cylinder(r=.05*25.4, h=10, $fn=16);
 		translate([5,7+26,-wthick-2.9]) cylinder(r=.05*25.4, h=10, $fn=16);
 	}
@@ -769,18 +840,21 @@ module piezo(model = 0, depth=10, film = 1){
 			difference(){
 				union(){
 					translate([0,0,(3/2)+(piezo_ht/2)-.01]) cylinder(r=piezo_dia/2, h=piezo_ht, $fn=64, center=true);
-					translate([0,0,3/2]) rotate([0,0,45]) cube([piezo_dia,piezo_dia,3], center=true);
+					translate([0,0,1.2]) rotate([0,0,45]) cube([piezo_dia,piezo_dia,3], center=true);
 				}
 				// spkr center
 				translate([0,0,(3/2)+(piezo_ht/2)+.01]) cylinder(r=piezo_id/2, h=piezo_ht+1, $fn=64, center=true);
 				// mtg holes, #1 thru
 				translate([(piezo_dia/2)+3,0,0]) cylinder(r=num1_thru/2, h=20, $fn=16, center=true);
+				translate([(piezo_dia/2)+3,0,-.35]) cylinder(r1=3.4/2, r2=0, h=3.4/2, $fn=24);
+
 				translate([-(piezo_dia/2)-3,0,0]) cylinder(r=num1_thru/2, h=20, $fn=16, center=true);
+				translate([-(piezo_dia/2)-3,0,-.35]) cylinder(r1=3.4/2, r2=0, h=3.4/2, $fn=24);
 				// lop-offs
 				translate([0,(piezo_dia/2)+(30/2),0]) cube([30,30,30], center=true);
 				translate([0,-(piezo_dia/2)-(30/2),0]) cube([30,30,30], center=true);
 				// wire-gap
-				translate([0,0,depth-2]) cube([3,piezo_dia+5,4], center=true);
+				translate([0,0,depth-2]) cube([4.5,piezo_dia+5,4], center=true);
 			}
 		}else{
 			difference(){
@@ -814,7 +888,7 @@ module lcd(mtg=false, holes=false, csnkz = -5, hdia = .11*25.4){
 	}else{
 		if(!holes){
 			// pcb+backing
-			translate([0-.25,0-.25,-fht_in+.1-scrnthk]) cube([170+.5,95+.5,fht_in]);
+			translate([0-1,0-.25,-fht_in+.1-scrnthk]) cube([170+1.5,95+.5,fht_in]);
 			// LCD frame
 			translate([9-.25,6.9-.25,-scrnthk]) cube([152.5+.5,88+.5,7.3+scrnthk]);
 			// bezel opening
@@ -978,7 +1052,7 @@ module backlight(model = 1){
 	}
 }
 
-module dial(model=0, sl=20){
+module dial(model=2, sl=20){
 
 	if(model == 0){
 		// dial main body
@@ -993,8 +1067,22 @@ module dial(model=0, sl=20){
 		translate([-.8*opvoidr,0,0]) cylinder(r=3, h=40, $fn=32, center=true);
 		translate([0,.8*opvoidr,0]) cylinder(r=3, h=40, $fn=32, center=true);
 		translate([0,-.8*opvoidr,0]) cylinder(r=3, h=40, $fn=32, center=true);
-
-	}else{
+	}
+	if(model == 2){
+		// dial optical diffuser insert piece
+		difference(){
+			// main body
+			union(){
+				translate([0,0,opv_deep]) cylinder(r2=opvoidr-0.5+(1.3/2), r1=opvoidr-0.5-.5+(1.3/2), h=.51, $fn=64);
+				translate([0,0,opv_deep+.5]) cylinder(r=opvoidr-0.5+(1.3/2), h=5.5-.5, $fn=64);
+			}
+			// central opening for dial shaft
+			translate([0,0,opv_deep-.1]) cylinder(r1=dialnutr, r2=dialnutr+2, h=6, $fn=32);
+			// concave shaping of top surface
+			translate([0,0,opv_deep+5.51-1.5]) cylinder(r2=opvoidr-.5-1, r1=0, h=1.5, $fn=64);
+		}
+	}
+	if(model==1){
 		// dial main body
 		translate([0,0,(-6.5/2)+.1]) cube([13,14,6.5], center=true);
 		// shaft length
@@ -1020,32 +1108,60 @@ bapron = 2;		// apron around periphery of button base
 bcham = .5;
 */
 
-
 module cap(model=0, colr=1, capht=6){
+walldr = 2;		// sets thickness of cap wall
+topdr = .7;		// sets thickness of cap top
 
-	if(model == 0){
-		translate([0,0,(-capht/2)+(2*bclr)]) cube([blen+bclr, bwid+bclr, capht+(4*bclr)], center=true);
-		translate([0,0,-capht+(bapht/2)-.1]) cube([capronx, caprony, bapht], center=true);
+	// ruler
+//	translate([1.5,-3,-7.5-5.48]) cylinder(r=1, h=7.5, $fn=16);
+
+	if(model==0 || model==2 || model>9){
+		capb(modelb=model, colrb=colr, caphtb=capht);
+	}else{
+		difference(){
+			capb(modelb=model, colrb=colr, caphtb=capht);
+			difference(){
+				translate([0,0,-topdr]) scale([(blen-walldr)/blen,(bwid-walldr)/bwid,1]) capb(modelb=model, colrb=colr, caphtb=capht);
+			}
+			// debug section
+//			translate([0,10,0]) cube([20,20,20],center=true);
+		}
+		// contact nib
+		difference(){
+			translate([0,0,-capht-.35-.3-.8]) cube([1.5, 8, bnib+scrnthk+1.6], center=true);
+			translate([0,0,-capht+1.5]) rotate([0,90,0]) cylinder(r=bwid*(bwid-2)/(2*bwid), h=4, $fn=16, center=true);
+			translate([0,-6.7,-capht]) rotate([20,0,0]) cube([4,5,10],center=true);
+			translate([0,6.7,-capht]) rotate([-20,0,0]) cube([4,5,10],center=true);
+
+			translate([0,5.14,-capht-8.85]) cube([4,5,10],center=true);
+			translate([0,-5.14,-capht-8.85]) cube([4,5,10],center=true);
+		}
 	}
-	if(model == 1){
+}
+
+module capb(modelb=0, colrb=1, caphtb=6){
+
+	if(modelb == 0){
+		translate([0,0,(-caphtb/2)+(2*bclr)]) cube([blen+bclr, bwid+bclr, caphtb+(4*bclr)], center=true);
+		translate([0,0,-caphtb+(bapht/2)-.1]) cube([capronx, caprony, bapht], center=true);
+	}
+	if(modelb == 1){
 		difference(){
 			union(){
-				if(colr==1) color("yellow"){
-					translate([0,0,(-capht+brelief)/2]) minkowski(){
-						cube([blen-(bcham), bwid-(bcham), capht-(bcham)+brelief], center=true);
+				if(colrb==1) color("yellow"){
+					translate([0,0,(-caphtb+brelief)/2]) minkowski(){
+						cube([blen-(bcham), bwid-(bcham), caphtb-(bcham)+brelief], center=true);
 						sphere(r=bcham/2, $fn=32);
 					}
 				}
-				if(colr==2) color("red"){
-					translate([0,0,(-capht+brelief)/2]) minkowski(){
-					cube([blen-(bcham), bwid-(bcham), capht-(bcham)+brelief-4], center=true);
+				if(colrb==2) color("red"){
+					translate([0,0,(-caphtb+brelief)/2]) minkowski(){
+					cube([blen-(bcham), bwid-(bcham), caphtb-(bcham)+brelief-4], center=true);
 					sphere(r=bcham/2, $fn=32);
 					}
 				}
 				// apron
-				translate([0,0,-capht+(bapht/2)]) cube([blen+(2*capron), bwid+(2*capron), bapht], center=true);
-				// contact nib
-				translate([0,0,-capht-.35-.3]) cube([2, 8, bnib+scrnthk], center=true);
+				translate([0,0,-caphtb+(bapht/2)]) cube([blen+(2*capron), bwid+(2*capron), bapht], center=true);
 			}
 			// corner chams
 			translate([-capronx/2,-caprony/2,0]) cylinder(r=capcham, h=20, $fn=4, center=true);
@@ -1055,43 +1171,75 @@ module cap(model=0, colr=1, capht=6){
 		}
 	}
 	// spacer supports
-	if(model == 2){
+	if(modelb == 2){
 	qoffs=0;
 	qoffy=0;
-		translate([-(capronx/2)-qoffs,-(caprony/2)-qoffy,-capht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+2+scrnthk]);
-		translate([(capronx/2)+qoffs,-(caprony/2)-qoffy,-capht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+2+scrnthk]);
-		translate([-(capronx/2)-qoffs,(caprony/2)+qoffy,-capht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+2+scrnthk]);
-		translate([(capronx/2)+qoffs,(caprony/2)+qoffy,-capht+(bapht/2)-stht]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+2+scrnthk]);
+		translate([-(capronx/2)-qoffs,-(caprony/2)-qoffy,-caphtb+(bapht/2)-stht-.468]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+2+scrnthk]);
+		translate([(capronx/2)+qoffs,-(caprony/2)-qoffy,-caphtb+(bapht/2)-stht-.468]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+2+scrnthk]);
+		translate([-(capronx/2)-qoffs,(caprony/2)+qoffy,-caphtb+(bapht/2)-stht-.468]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+2+scrnthk]);
+		translate([(capronx/2)+qoffs,(caprony/2)+qoffy,-caphtb+(bapht/2)-stht-.468]) rotate([0,0,45]) translate([-(1.5*stcham)/2,-(1.5*stcham)/2,0]) cube([1.5*stcham,1.5*stcham,stht+2+scrnthk]);
 
-//		translate([-(capronx/2)-.17,-(caprony/2)-.17,-capht+(bapht/2)-stht]) cylinder(r=stcham, h=stht, $fn=4, center=false);
-//		translate([capronx/2,-caprony/2,-capht+(bapht/2)-stht]) cylinder(r=stcham, h=stht, $fn=4, center=false);
-//		translate([-capronx/2,caprony/2,-capht+(bapht/2)-stht]) cylinder(r=stcham, h=stht, $fn=4, center=false);
-//		translate([capronx/2,caprony/2,-capht+(bapht/2)-stht]) cylinder(r=stcham, h=stht, $fn=4, center=false);
+//		translate([-(capronx/2)-.17,-(caprony/2)-.17,-caphtb+(bapht/2)-stht]) cylinder(r=stcham, h=stht, $fn=4, center=false);
+//		translate([capronx/2,-caprony/2,-caphtb+(bapht/2)-stht]) cylinder(r=stcham, h=stht, $fn=4, center=false);
+//		translate([-capronx/2,caprony/2,-caphtb+(bapht/2)-stht]) cylinder(r=stcham, h=stht, $fn=4, center=false);
+//		translate([capronx/2,caprony/2,-caphtb+(bapht/2)-stht]) cylinder(r=stcham, h=stht, $fn=4, center=false);
 	}
-	if(model==10){
+	if(modelb==10){
 		// #1 holes
-		translate([-(capronx/2)-.17,-(caprony/2)-.17,-capht+(bapht/2)-stht]) cylinder(r=hole1/2, h=2*(5/16)*25.4, $fn=10, center=true);
+		translate([-(capronx/2)-.17,-(caprony/2)-.17,-caphtb+(bapht/2)-stht]) cylinder(r=hole1/2, h=2*(5/16)*25.4, $fn=10, center=true);
 	}
-	if(model==11){
+	if(modelb==11){
 		// #1 holes
-		translate([(capronx/2)-.17,-(caprony/2)-.17,-capht+(bapht/2)-stht]) cylinder(r=hole1/2, h=2*(5/16)*25.4, $fn=10, center=true);
+		translate([(capronx/2)-.17,-(caprony/2)-.17,-caphtb+(bapht/2)-stht]) cylinder(r=hole1/2, h=2*(5/16)*25.4, $fn=10, center=true);
 	}
-	if(model==12){
+	if(modelb==12){
 		// #1 holes
-		translate([-(capronx/2)-.17,(caprony/2)-.17,-capht+(bapht/2)-stht]) cylinder(r=hole1/2, h=2*(5/16)*25.4, $fn=10, center=true);
+		translate([-(capronx/2)-.17,(caprony/2)-.17,-caphtb+(bapht/2)-stht]) cylinder(r=hole1/2, h=2*(5/16)*25.4, $fn=10, center=true);
 	}
-	if(model==13){
+	if(modelb==13){
 		// #1 holes
-		translate([(capronx/2)-.17,(caprony/2)-.17,-capht+(bapht/2)-stht]) cylinder(r=hole1/2, h=2*(5/16)*25.4, $fn=10, center=true);
+		translate([(capronx/2)-.17,(caprony/2)-.17,-caphtb+(bapht/2)-stht]) cylinder(r=hole1/2, h=2*(5/16)*25.4, $fn=10, center=true);
 	}
 }
 
 module vq(model=1){
+walldr = 1.5;		// sets thickness of cap wall
+topdr = .5;		// sets thickness of cap top
+
+	// ruler
+//	translate([0,11,-11]) cylinder(r=3, h=14.5, $fn=16);
+
+	// model
+	if(model==0){
+		vqb(modelb=model);
+	}else{
+		difference(){
+			vqb(modelb=1);
+			difference(){
+				translate([0,0,-topdr]) scale([(bqlen-walldr)/bqlen,(bqwid-walldr)/bqwid,1]) vqb(modelb=2);
+			}
+			// debug section
+//			translate([10,13,0]) cube([20,20,20],center=true);
+		}
+		// contact nibs
+		difference(){
+			union(){
+				translate([0,(-bqwid/2)+.5+(2.25/2)+1,-bht-bapron-(7.1/2)+2.1+4]) cube([1.5, 7.25/2, 7.1-2.6], center=true);
+				translate([0,(-bqwid/2)+.5+(2.25/2),-bht-bapron-(7.1/2)+2.1+(2.6/2)-(1.1/2)+.25]) cube([1.5, 7.25, 7.1-2], center=true);
+				translate([0,(+bqwid/2)-.5-(2.25/2)-1,-bht-bapron-(7.1/2)+2.1+4]) cube([1.5, 7.25/2, 7.1-2.6], center=true);
+				translate([0,(bqwid/2)-.5-(2.25/2),-bht-bapron-(7.1/2)+2.1+(2.6/2)-(1.1/2)+.25]) cube([1.5, 7.25, 7.1-2], center=true);
+			}
+			rotate([0,90,0]) scale([1.5,1,1]) cylinder(r=13.5, h=4, $fn=4, center=true);
+		}
+	}
+}
+
+module vqb(modelb=1){
 qcapronx = bqlen+(2*(bapron+bclr));
 qcaprony = bqwid+(2*(bapron+bclr));
 qcapcham = 2.5;
 
-	if(model == 0){
+	if(modelb == 0){
 		// main body
 		translate([0,0,(-bht/2)+(2*bclr)]) cube([bqlen+bclr, bqwid+bclr, bht+(4*bclr)], center=true);
 		// apron
@@ -1102,16 +1250,22 @@ qcapcham = 2.5;
 		difference(){
 			union(){
 				// main cap body
-				color("yellow") translate([0,0,(-bht+brelief)/2]) minkowski(){
-					cube([bqlen-(bcham), bqwid-(bcham)-brocker, bht-(bcham)+brelief+1], center=true);
+				color("yellow") translate([0,0,((-bht+brelief)/2)-.5]) minkowski(){
+					cube([bqlen-(bcham), bqwid-(bcham)-brocker, bht-(bcham)+brelief+2], center=true);
 					sphere(r=bcham/2, $fn=32);
 				}
 				// apron
-				translate([0,0,-bht-.5]) cube([bqlen+(2*bapron), bqwid+(2*bapron), bapht], center=true);
+				if(modelb==1){
+					translate([0,0,-bht-.5]) cube([bqlen+(2*bapron), bqwid+(2*bapron), bapht], center=true);
+				}else{
+					translate([0,0,-bht-1]) cube([bqlen+(2*bapron), bqwid+(2*bapron), bapht], center=true);
+				}
 				// contact nib
-				translate([0,0,-bht-bapron+.4]) cube([2, bqwid+3.5, bnib+scrnthk-2], center=true);
-				// rocker axle
-				translate([0,0,-bht+1]) rotate([0,90,0]) cylinder(r=2-.1, h=bqlen+(2*(bapron+bclr)), $fn=32, center=true);
+//				translate([0,0,-bht-bapron+.4]) cube([2, bqwid+3.5, bnib+scrnthk-2], center=true);
+				if(modelb!=2){
+					// rocker axle
+					translate([0,0,-bht+1]) rotate([0,90,0]) cylinder(r=2-.1, h=bqlen+(2*(bapron+bclr)), $fn=32, center=true);
+				}
 			}
 			// apron chams
 			translate([-qcapronx/2,-qcaprony/2,0]) cylinder(r=capcham, h=20, $fn=4, center=true);
@@ -1121,6 +1275,19 @@ qcapcham = 2.5;
 		}
 	}
 	
+}
+
+module pivot(){
+pivot_ht = 8.5;
+pivotx = 11.7;
+pivoty = 4;
+
+	difference(){
+		cube([pivotx,pivoty,pivot_ht]); //5.9+2.7
+		translate([-1,0,pivot_ht]) rotate([0,90,0]) cylinder(r=pivoty/2, h=15, $fn=4);
+		translate([-1,4,pivot_ht]) rotate([0,90,0]) cylinder(r=pivoty/2, h=15, $fn=4);
+	}
+	translate([0,(-15.7/2)+2,0]) cube([2.5,15.7,1]);
 }
 
 module pbsw(model=1){
@@ -1212,11 +1379,28 @@ module trled(model=0){
 	}
 }
 
+module sunwin(){
+	difference(){
+		union(){
+			translate([0,0,5.99]) cylinder(r1=(domedia/2)-.5, r2=(domedia/2)-1.5, h=1, $fn=64, center=false);
+			cylinder(r=(domedia/2)-.5, h=6, $fn=64, center=false);
+			translate([0,0,-2/2]) cube([domedia+10, 8, 2], center=true);
+		}
+		translate([0,0,-4]) cylinder(r=(domedia/2)-3, h=10, $fn=64, center=false);
+		// mtg holes
+		translate([15,0,-4]) cylinder(r=num1_thru/2, h=7, $fn=16);
+		translate([15,0,-4+(3.8/2)]) cylinder(r1=3.8/2, r2=0, h=3.8/2, $fn=16);
+		translate([-15,0,-4]) cylinder(r=num1_thru/2, h=7, $fn=16);
+		translate([-15,0,-4+(3.8/2)]) cylinder(r1=3.8/2, r2=0, h=3.8/2, $fn=16);
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 module ltdome(){
 
-	cylinder(r=domedia/2, h=20, $fn=64, center=true);
+	cylinder(r=(domedia-3)/2, h=20, $fn=64, center=true);
+	translate([0,0,-2.5]) cylinder(r=domedia/2, h=20, $fn=64, center=false);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -1224,10 +1408,19 @@ module ltdome(){
 module cpknob(model=0){
 
 	if(model==0){
-		cylinder(r=(pknobdia+1)/2, h=pknobht+1, $fn=32, center=true);
-		translate([0,-4,0]) rotate([90,0,0]) scale([1.5,1,1]) rotate([0,0,45]) cylinder(r1=3.2, r2=9, h=4, $fn=4);
+ 		cylinder(r=(pknobdia+1)/2, h=pknobht+1, $fn=32, center=true);
+		translate([0,-4,0]) rotate([90,0,0]) scale([1.5,.8,1]) rotate([0,0,45]) cylinder(r1=3.2, r2=9, h=4, $fn=4);
 	}else{
-		cylinder(r=(pknobdia)/2, h=pknobht, $fn=64, center=true);
+		difference(){
+			cylinder(r=((pknobdia)/2), h=4.9, $fn=64);
+			translate([0,0,2]) cylinder(r=(9.65)/2, h=4.5, $fn=64);
+			translate([0,0,2+2]) cylinder(r=(10.2)/2, h=4.5, $fn=64);
+			for(a=[0:20:360]){
+				rotate([0,0,a]) translate([(pknobdia)/2,0,0]) cylinder(r=.5, h=10, $fn=4, center=true);
+			}
+			translate([(10.4/2)+(10/2),0,0]) cube([10,20,20],center=true);
+		}
+//		translate([0,0,1.5]) cube([.8,3.6,1+2],center=true);
 	}
 }
 
@@ -1271,6 +1464,20 @@ module corner(height=5){
 			translate([0,0,height-chamfer]) cylinder(r2=(crad/2)-chamfer, r1=crad/2, h=chamfer, $fn=32, center=false);
 			translate([0,0,chamfer]) cylinder(r=crad/2, h=height-(2*chamfer), $fn=32, center=false);			// corner
 			cylinder(r1=(crad/2)-chamfer, r2=crad/2, h=chamfer, $fn=32, center=false);
+}
+
+module deskstand(){
+ww = 4;
+
+	difference(){
+		union(){
+			cube([150,90,ww+1]);
+			translate([150-ww,0,0]) cube([ww,90,110]);
+			cube([ww,90,110]);
+			translate([0,90-ww,0]) cube([150,ww,80]);
+		}
+		translate([-20,10,8]) rotate([53,0,0]) cube([200,150,150]);
+	}
 }
 
 /////////////////////////
