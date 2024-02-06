@@ -20,4 +20,7 @@ Mechanical: 3D model in advanced stages, nearing prototype readiness. Still need
 
 The "Snapshots" folder contains some images of the current state of the development.
 
-BOM cost: Current cost data is in the $300 per radio ball-park for components and PCBs (not including any costs assiciated with 3D printing).
+BOM cost: Current cost data is in the $300 per radio ball-park for components and PCBs (not including any costs associated with 3D printing).
+
+02/05/24<br>
+First article is in DVT!!! The main mechanical deviation is that of button nomenclature.  I still don't have a difinitive solution in mind.  Cheesy, label printed lettering is the order of the day.  All else is progressing well, aiming for a first-to-field prototype by the end of the month.
