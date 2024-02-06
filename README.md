@@ -24,3 +24,5 @@ BOM cost: Current cost data is in the $300 per radio ball-park for components an
 
 02/05/24<br>
 First article is in DVT!!! The main mechanical deviation is that of button nomenclature.  I still don't have a difinitive solution in mind.  Cheesy, label printed lettering is the order of the day.  All else is progressing well, aiming for a first-to-field prototype by the end of the month.
+
+Added UM folder for the user's manual source files.
