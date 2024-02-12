@@ -253,7 +253,7 @@
 #define PORTD_DIRV		(LCD_FS|LCD_RVS|sparePD7)
 #define	PORTD_DENV		(0xff)
 #define	PORTD_PURV		~(LCD_FS|LCD_RVS|BUSYn)
-#define	PORTD_INIT		(LCD_FS|LCD_RVS)
+#define	PORTD_INIT		(0)
 
 // Port E defines
 #define sparePE0		0x01		// in	J2-03

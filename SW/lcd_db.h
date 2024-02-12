@@ -16,7 +16,7 @@
  *
  *******************************************************************/
 
-#define SWAPEVEN	// undefine if production build.  This corrects the even/odd swap mistake in the prototype bus wiring
+#undef SWAPEVEN	// undefine if production build.  This corrects the even/odd swap mistake in the prototype bus wiring
 
 //------------------------------------------------------------------------------
 // extern defines

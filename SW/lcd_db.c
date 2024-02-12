@@ -26,6 +26,8 @@
 #include "spi.h"
 #define	LCD_DB
 
+#undef	PROTO
+
 //------------------------------------------------------------------------------
 // Define Statements
 //------------------------------------------------------------------------------
@@ -917,7 +919,7 @@ void lcd_setup(void){
 // wrdb() writes data to parallel  port
 //-----------------------------------------------------------------------------
 void wrdb(U8 data, U8 addr, U8 mask){
-	U8	css = nTRD|nTWR|nTCS; //|addr;
+	U8	css = nTRD|nTWR|nTCS|TRESET; //|addr;
 	U8	i;
 
 	do{
@@ -944,7 +946,7 @@ void wrdb(U8 data, U8 addr, U8 mask){
 // rddb() reads data from parallel  port
 //-----------------------------------------------------------------------------
 U8 rddb(U8 addr){
-	U8	css = nTRD|nTWR|nTCS; //|addr;	// init port control to idle
+	U8	css = nTRD|nTWR|nTCS|TRESET; //|addr;	// init port control to idle
 	U8	data;
 	U8	i;
 
@@ -966,6 +968,7 @@ U8 rddb(U8 addr){
 
 void lcd_cntl(U8 cmd){
 
+/*#ifdef PROTO
 	switch(cmd){
 	case LDSC_RESET:
 		GPIO_PORTE_DATA_R |= TRESET;
@@ -981,6 +984,24 @@ void lcd_cntl(U8 cmd){
 		GPIO_PORTE_DATA_R &= ~TRESET;			// toggle reset
 		break;
 	}
+#else*/
+	switch(cmd){
+	case LDSC_RESET:
+		GPIO_PORTE_DATA_R &= ~TRESET;			// toggle reset
+		wait(20);
+		GPIO_PORTE_DATA_R |= TRESET;
+		break;
+
+	default:									// init port
+	case LDSC_INIT:
+		GPIO_PORTB_DIR_R = PORTB_DIRV;
+		GPIO_PORTE_DATA_R = PORTE_INIT;
+		wait(20);
+		GPIO_PORTE_DATA_R |= TRESET;			// toggle reset
+		break;
+	}
+//#endif
+
 	return;
 }
 

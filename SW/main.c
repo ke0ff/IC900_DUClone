@@ -24,6 +24,10 @@
  *
  *    Project scope rev History:
  *    In-process code-n-test.
+ *<V0.1>
+ *    02-11-24:		changed "OW" symbol to inverse "FUNC"
+ *    				Code stability = 8.5.  Release to field test -jhaas
+ *<V0.0>
  *    12-17-23:		SPI TO error now places a hash of horzontal lines on the display to accentuate the stale data.
  *    				Fixed trig2 processing bug.  Now there are no errors in the IC-900 DVT.
  *
